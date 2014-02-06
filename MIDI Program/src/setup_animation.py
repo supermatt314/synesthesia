@@ -7,6 +7,7 @@ Created on Jul 10, 2013
 import pyglet
 import midi_parse
 import midi_objects
+from configobj import ConfigObj
                 
 # Overloads midi_parse's register note function and captures notes in 'note_list'
 note_list = []
@@ -16,12 +17,7 @@ midi_parse.register_note = register_note
 
 def get_data(main_window):
      
-    # Start Data
-
-
-    from example_settings import example_settings as settings_data
-    
-    # End Data
+    settings_data = read_config()
       
     # Pre-calculations
     song_data = settings_data['song_data']      
@@ -98,3 +94,12 @@ def setup_animation(main_window,data):
         music = song_data['mp3_file']
         media_player.set_music(music)
     media_player.set_delay(song_data['mp3_delay'])
+    
+def create_new_config():
+    print('Try to create new config file')
+
+def read_config():
+    print('Read config file')
+    from example_settings import example_settings as settings_data
+    
+    return settings_data

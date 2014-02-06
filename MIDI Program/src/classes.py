@@ -11,6 +11,8 @@ Custom Window
 import time
 import pyglet
 import setup_animation
+from tkinter import filedialog
+import os
 
 # MIDI tick based clock, pause/unpause functionality
 class PlaybackClock(pyglet.clock.Clock):
@@ -160,10 +162,13 @@ class SetupEventHandler(object):
         self.window = window
         self.is_busy = False
     def on_key_press(self,symbol,modifiers):
+        if symbol == pyglet.window.key.N and (modifiers & pyglet.window.key.MOD_CTRL):
+            if not self.is_busy:
+                setup_animation.create_new_config()   
         if symbol == pyglet.window.key.L and (modifiers & pyglet.window.key.MOD_CTRL):
             if not self.is_busy:
                 self.is_busy = True
-                print("Setting up")
+                #print("Setting up")
                 self.window.data = setup_animation.get_data(self.window)
                 setup_animation.setup_animation(self.window, self.window.data)
                 self.is_busy = False
@@ -172,12 +177,8 @@ class SetupEventHandler(object):
                 self.window.delete_text('title','setup_help')
                 self.window.push_handlers(self.window.playback_handler)
                 self.window.draw_text('playback_help')
-                print("Done setting up")
+                #print("Done setting up")
             # load ini file
-        if symbol == pyglet.window.key.N and (modifiers & pyglet.window.key.MOD_CTRL):
-            if not self.is_busy:
-                # load midi file
-                print('Try to make new file')
         if symbol == pyglet.window.key.SLASH and (modifiers & pyglet.window.key.MOD_SHIFT):
             if self.window.help_toggle:
                 self.window.help_toggle = False
