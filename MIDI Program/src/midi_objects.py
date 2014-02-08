@@ -12,7 +12,7 @@ import pyglet
 
 class Animator(object):
     def __init__(self,**data):
-        self.fps = 20 # frames of animation per midi tick
+        self.fps = 60 # frames of animation per midi tick
         self.a_data = data['animation_data']
         self.n_data = data['note_data']
         self.s_data = data['song_data']
@@ -80,7 +80,7 @@ class DrawablePrimitiveObject(object):
         self.is_drawn = False
         
     def draw_object(self,dt):
-        # Actually make the vertices of the object and set animations
+        # Actually make the vertices of the object
         self.is_drawn = True
         self.vertex_list = self.batch.add( self.v_count, self.mode, self.group,
                                           (self.vertex_format, self.vertices),
@@ -107,9 +107,9 @@ class DrawablePrimitiveObject(object):
         # Set times to draw and delete object
         self.on_time = on_time
         self.off_time = off_time
-        self.midi_clock.schedule_once(self.draw_object, self.on_time-5)
+        #self.midi_clock.schedule_once(self.draw_object, self.on_time-5)
         self.midi_clock.schedule_once(self.start_object_animations, self.on_time)
-        self.midi_clock.schedule_once(self.delete_object, self.off_time)
+        self.midi_clock.schedule_once(self.stop_object_animations, self.off_time+240)
         
     def set_object_animations(self):
         pass
@@ -118,11 +118,11 @@ class DrawablePrimitiveObject(object):
         for animator in self.animation_list:
             animator.start_animation(self.vertex_list)
                     
-    def stop_object_animations(self):
+    def stop_object_animations(self,dt):
         for animator in self.animation_list:
-            self.midi_clock.unschedule(animator.start_animation)
+            #self.midi_clock.unschedule(animator.start_animation)
             self.midi_clock.unschedule(animator.animate)
-            self.midi_clock.unschedule(animator.stop_animation)
+            #self.midi_clock.unschedule(animator.stop_animation)
 
 class Background(DrawablePrimitiveObject):
     def __init__(self, batch, group, clock, **data):
@@ -157,6 +157,9 @@ class PianoRollObject(DrawablePrimitiveObject):
         self.off_time = self.data['note_data']['time_off'] + self.data['track_data']['scroll_off_time'] + self.data['song_data']['offset']
         self.set_draw_schedule(self.on_time, self.off_time)
         self.set_object_animations()
+        self.vertex_list = self.batch.add( self.v_count, self.mode, self.group,
+                                          (self.vertex_format, self.vertices),
+                                          (self.color_format , self.v_colors)  )        
 
     def set_object_animations(self):
         self.scroller = Scroller(self.midi_clock, **self.data)
