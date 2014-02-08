@@ -8,6 +8,9 @@ import pyglet
 import midi_parse
 import midi_objects
 from configobj import ConfigObj
+import tkinter as tk
+import tkinter.filedialog as filedialog
+import os
                 
 # Overloads midi_parse's register note function and captures notes in 'note_list'
 note_list = []
@@ -96,7 +99,66 @@ def setup_animation(main_window,data):
     media_player.set_delay(song_data['mp3_delay'])
     
 def create_new_config():
-    print('Try to create new config file')
+    root = tk.Tk()
+    root.withdraw()
+    options = {'defaultextension':'.mid',
+               'filetypes':[('MIDI', '.mid'),('All files', '.*')],
+               'initialdir':os.path.expanduser('~'),
+               'parent':root,
+               'title':'Choose MIDI file'}
+    midi_filename = filedialog.askopenfilename(**options)
+    if not midi_filename:
+        return
+    config_suggestion = midi_filename.split('/')[-1].split('.')[0]+'.ini'
+    cfg_options = {'defaultextension':'.ini',
+               'filetypes':[('Config File', '.ini')],
+               'initialdir':os.path.expanduser('~'),
+               'initialfile':config_suggestion,
+               'parent':root,
+               'title':'Choose location for config file'}
+    config_filename = filedialog.asksaveasfilename(**cfg_options)
+    if not config_filename:
+        return
+    mp3_options = {'defaultextension':'.mp3',
+               'filetypes':[('All types', '.*')],
+               'initialdir':os.path.expanduser('~'),
+               'parent':root,
+               'title':'Choose accompanying music'}
+    mp3_filename = filedialog.askopenfilename(**mp3_options)
+    new_config = ConfigObj()
+    new_config.filename = config_filename
+    
+    song_data = {
+                 'midi_file': midi_filename,
+                 'mp3_file': mp3_filename,
+                 'mp3_delay': 0,
+                 'screen_buffer': 20,
+                 'hit_line_percent': 0.5,
+                 'bg_color': [0,0,0,255]
+                 }
+    new_config['song_data'] = song_data
+    
+    track_data = {}
+    midifile = midi_parse.MidiFile()
+    midifile.read(midi_filename)  
+    unk_index = 0
+    extra_name_index = 1
+    for t in midifile.tracks:
+        for e in t.events:
+            if e.type == 'SEQUENCE_TRACK_NAME':
+                name = e.data.replace(b' ',b'_').decode(encoding='UTF-8')
+                break
+        else:
+            name = 'Unknown_Name_{}'.format(unk_index)
+            unk_index += 1
+        # To prevent key errors in the event of duplicate track names
+        if name in track_data.keys():
+            name = name + '_{}'.format(extra_name_index)
+            extra_name_index += 1
+        track_data[name] = {'index':t.index}
+    new_config['track_data'] = track_data
+    new_config.write()
+    root.destroy()
 
 def read_config():
     print('Read config file')

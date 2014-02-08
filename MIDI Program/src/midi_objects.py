@@ -135,7 +135,7 @@ class Background(DrawablePrimitiveObject):
         v4 = (self.data['window_width'],self.data['window_height'])
         self.vertices = v1+v2+v3+v2+v3+v4
         self.v_count = 6
-        self.v_colors = self.data['color']*6
+        self.v_colors = self.data['bg_color']*6
         self.set_draw_schedule(0, 1000000)
         
 class PianoRollObject(DrawablePrimitiveObject):

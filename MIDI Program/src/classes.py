@@ -11,8 +11,6 @@ Custom Window
 import time
 import pyglet
 import setup_animation
-from tkinter import filedialog
-import os
 
 # MIDI tick based clock, pause/unpause functionality
 class PlaybackClock(pyglet.clock.Clock):
