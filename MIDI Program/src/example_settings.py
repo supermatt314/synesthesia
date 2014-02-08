@@ -10,7 +10,7 @@ example_settings = {
                                  'mp3_delay': 2.33,
                                  'screen_buffer': 20,
                                  'hit_line_percent': 0.5,
-                                 'color': [0,0,0,255],
+                                 'bg_color': [0,0,0,255],
                                  },
                     'track_data':{
                              '0' :{

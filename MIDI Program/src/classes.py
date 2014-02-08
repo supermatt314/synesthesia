@@ -11,6 +11,7 @@ Custom Window
 import time
 import pyglet
 import setup_animation
+import config_parse
 
 # MIDI tick based clock, pause/unpause functionality
 class PlaybackClock(pyglet.clock.Clock):
@@ -129,7 +130,7 @@ class PlaybackWindow(pyglet.window.Window):
                                                          batch=self.main_batch)
         if self.help_toggle:
             if 'setup_help' in args:
-                self.help_text_setup = pyglet.text.Label('Ctrl+N: Create New Setup File from MIDI | Ctrl+L: Load Setup File |  Esc: Close program | ?: Toggle Help Text',
+                self.help_text_setup = pyglet.text.Label('Ctrl+N: Setup New Config File | Ctrl+L: Load Config File |  Esc: Close program | ?: Toggle Help Text',
                                                          font_name='Arial',
                                                          font_size=10,
                                                          x=0,
@@ -162,7 +163,7 @@ class SetupEventHandler(object):
     def on_key_press(self,symbol,modifiers):
         if symbol == pyglet.window.key.N and (modifiers & pyglet.window.key.MOD_CTRL):
             if not self.is_busy:
-                setup_animation.create_new_config()   
+                config_parse.create_new_config()   
         if symbol == pyglet.window.key.L and (modifiers & pyglet.window.key.MOD_CTRL):
             if not self.is_busy:
                 self.is_busy = True
