@@ -95,13 +95,16 @@ def read_config():
                'parent':root,
                'title':'Choose location for config file'}
     config_filename = filedialog.askopenfilename(**cfg_options)
+    if not config_filename:
+        print('No file opened')
+        return None
     configspec_filename = os.path.join(os.path.dirname(__file__),os.pardir,'Resources\default_config.ini')
     validator = val.Validator()
     validator.functions['color_list'] = color_list
     config = ConfigObj(config_filename,configspec=configspec_filename)
     result = config.validate(validator)
     if not result:
-        print("BOOOOOOOOOOOOO")
+        print("File not validated")
         return None
     else:
         return config

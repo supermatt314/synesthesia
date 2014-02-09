@@ -169,15 +169,16 @@ class SetupEventHandler(object):
                 self.is_busy = True
                 #print("Setting up")
                 self.window.data = setup_animation.get_data(self.window)
-                setup_animation.setup_animation(self.window, self.window.data)
-                self.is_busy = False
-                # Switch to playback mode
-                self.window.pop_handlers()
-                self.window.delete_text('title','setup_help')
-                self.window.push_handlers(self.window.playback_handler)
-                self.window.draw_text('playback_help')
-                #print("Done setting up")
-            # load ini file
+                if self.window.data: # If actual data is returned
+                    setup_animation.setup_animation(self.window, self.window.data)
+
+                    # Switch to playback mode
+                    self.window.pop_handlers()
+                    self.window.delete_text('title','setup_help')
+                    self.window.push_handlers(self.window.playback_handler)
+                    self.window.draw_text('playback_help')
+                    #print("Done setting up")
+                self.is_busy = False                    
         if symbol == pyglet.window.key.SLASH and (modifiers & pyglet.window.key.MOD_SHIFT):
             if self.window.help_toggle:
                 self.window.help_toggle = False

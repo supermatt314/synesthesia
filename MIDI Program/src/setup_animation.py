@@ -18,6 +18,9 @@ midi_parse.register_note = register_note
 def get_data(main_window):
      
     settings_data = config_parse.read_config()
+    
+    if not settings_data:
+        return None
       
     # Pre-calculations
     song_data = settings_data['song_data']      
@@ -49,10 +52,12 @@ def get_data(main_window):
             if note['track_no'] == t.index:
                 note['track_name'] = name
                 
-    tempo_data = [{'midi_tick':e.time, 'tempo_raw':e.data} for t in midifile.tracks for e in t.events if e.type == "SET_TEMPO"]
+    tempo_data = [{'midi_tick':e.time+offset, 'tempo_raw':e.data} for t in midifile.tracks for e in t.events if e.type == "SET_TEMPO"]
     for t in tempo_data:
         mpqn = int.from_bytes(t['tempo_raw'], 'big') #microseconds per quarter note
         t['tempo'] = int(round(60000000/mpqn,0)) # convert MIDI's ridiculous tempo numbers into beats per minute
+    sorted(tempo_data, key=lambda k: k['midi_tick'])
+    tempo_data[0]['midi_tick'] = 0
 
     max_note, min_note = 0, 127
     for note in note_list:
@@ -88,6 +93,8 @@ def setup_animation(main_window,data):
                             'note_data':note}
             if track['type'] == 'piano_roll':
                 thing = midi_objects.PianoRollObject(batch,group,midi_clock,**data_to_send)
+            elif track['type'] == 'none':
+                pass
 
     # Setup music player
     if song_data['mp3_file'] != '':
