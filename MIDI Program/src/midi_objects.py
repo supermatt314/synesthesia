@@ -5,13 +5,13 @@ Created on Jul 6, 2013
 '''
 
 
-from math import sqrt
-
+#from math import sqrt
 import pyglet
 
-
 class Animator(object):
-    def __init__(self,**data):
+    def __init__(self,midi_clock,vertex_list,**data):
+        self.midi_clock = midi_clock
+        self.vertex_list = vertex_list
         self.fps = 60 # frames of animation per midi tick
         self.a_data = data['animation_data']
         self.n_data = data['note_data']
@@ -26,39 +26,40 @@ class Animator(object):
 
 class Highlighter(Animator):
     # Highlights object at specified times    
-    def __init__(self,midi_clock,**data):
-        Animator.__init__(self,**data)
-        self.midi_clock = midi_clock
+    def __init__(self,midi_clock,vertex_list,**data):
+        Animator.__init__(self,midi_clock,vertex_list,**data)
+        self.vertex_list_size = self.vertex_list.get_size()        
         # Times relative to note creation
         self.highlight_on =  self.t_data['scroll_on_time']
         self.highlight_off = self.n_data['time_off'] - self.n_data['time_on'] + self.t_data['scroll_on_time']
 
-    def start_animation(self,vertex_list):
-        self.midi_clock.schedule_once(self.animate, self.highlight_on, vertex_list, self.a_data['highlight_on_color'])
-        self.midi_clock.schedule_once(self.animate, self.highlight_off, vertex_list, self.a_data['highlight_off_color'])
+    def start_animation(self):
+        self.midi_clock.schedule_once(self.animate, self.highlight_on, self.a_data['highlight_on_color'])
+        self.midi_clock.schedule_once(self.animate, self.highlight_off, self.a_data['highlight_off_color'])
         
-    def animate(self,dt,vertex_list,highlight_color):
+    def animate(self,dt,highlight_color):
         # Assumes alpha channel present, new color must be list/tuple of 4 ints
-        size = vertex_list.get_size()
-        for i in range(size):
-            vertex_list.colors[4*i]   = highlight_color[0]
-            vertex_list.colors[4*i+1] = highlight_color[1]
-            vertex_list.colors[4*i+2] = highlight_color[2]            
-            vertex_list.colors[4*i+3] = highlight_color[3]
+        for i in range(self.vertex_list_size):
+            self.vertex_list.colors[4*i]   = highlight_color[0]
+            self.vertex_list.colors[4*i+1] = highlight_color[1]
+            self.vertex_list.colors[4*i+2] = highlight_color[2]            
+            self.vertex_list.colors[4*i+3] = highlight_color[3]
       
 class Scroller(Animator):
     # Scrolls a vertex list by scroll speed
-    def __init__(self,midi_clock,**data):
-        Animator.__init__(self,**data)
-        self.midi_clock = midi_clock
+    def __init__(self,midi_clock,vertex_list,**data):
+        Animator.__init__(self,midi_clock,vertex_list,**data)
+        self.vertex_list_size = self.vertex_list.get_size()
         
-    def start_animation(self,vertex_list):
-        self.midi_clock.schedule_interval(self.animate, 1/self.fps, vertex_list, -self.t_data['speed'])
+    def start_animation(self):
+        self.midi_clock.schedule_interval(self.animate, 1/self.fps, -self.t_data['speed'])
         
-    def animate(self,dt,vertex_list,scroll_speed):
-        scroll_amount = scroll_speed * dt
-        for i in range(0,len(vertex_list.vertices),2):
-            vertex_list.vertices[i] += scroll_amount
+    def animate(self,dt,scroll_speed):
+        for i in range(self.vertex_list_size):
+            self.vertex_list.vertices[2*i] += scroll_speed * dt
+            
+    def stop_animation(self):
+        self.midi_clock.unschedule(self.animate)
 
 '''------------------------------------------------------'''
             
@@ -71,30 +72,33 @@ class DrawablePrimitiveObject(object):
         self.vertex_format = 'v2f'
         self.color_format = 'c4B'
         self.v_count = 0
-        self.vertices = []
-        self.v_colors = []
+        self.v_index = []
+        self.vertices = ()
+        self.v_colors = ()
         self.vertex_list = None
         self.mode = pyglet.gl.GL_TRIANGLES #default mode
         self.on_time = 0
         self.off_time = 0
-        self.is_drawn = False
+        #self.is_drawn = False
         
-    def draw_object(self,dt):
-        # Actually make the vertices of the object
-        self.is_drawn = True
-        self.vertex_list = self.batch.add( self.v_count, self.mode, self.group,
-                                          (self.vertex_format, self.vertices),
-                                          (self.color_format , self.v_colors)  )
+    #===========================================================================
+    # def draw_object(self,dt):
+    #     # Actually make the vertices of the object
+    #     self.is_drawn = True
+    #     self.vertex_list = self.batch.add( self.v_count, self.mode, self.group,
+    #                                       (self.vertex_format, self.vertices),
+    #                                       (self.color_format , self.v_colors)  )
+    #===========================================================================
         
     def delete_object(self,dt):
         # Turn off updating and delete object
         self.stop_object_animations()
-        self.midi_clock.unschedule(self.draw_object)
-        self.midi_clock.unschedule(self.delete_object)
-        
-        if self.is_drawn == True:
-            self.is_drawn = False
-            self.vertex_list.delete()
+        #self.midi_clock.unschedule(self.draw_object)
+        #self.midi_clock.unschedule(self.delete_object)
+        self.vertex_list.delete()
+        #if self.is_drawn == True:
+        #    self.is_drawn = False
+        #    self.vertex_list.delete()
 
     def reset_object(self,new_clock):
         # Delete the current object and reschedule its draw and animation times
@@ -116,13 +120,11 @@ class DrawablePrimitiveObject(object):
     
     def start_object_animations(self,dt):
         for animator in self.animation_list:
-            animator.start_animation(self.vertex_list)
+            animator.start_animation()
                     
     def stop_object_animations(self,dt):
         for animator in self.animation_list:
-            #self.midi_clock.unschedule(animator.start_animation)
-            self.midi_clock.unschedule(animator.animate)
-            #self.midi_clock.unschedule(animator.stop_animation)
+            animator.stop_animation()
 
 class Background(DrawablePrimitiveObject):
     def __init__(self, batch, group, clock, **data):
@@ -133,10 +135,13 @@ class Background(DrawablePrimitiveObject):
         v2 = (0,self.data['window_height'])
         v3 = (self.data['window_width'],0)
         v4 = (self.data['window_width'],self.data['window_height'])
-        self.vertices = v1+v2+v3+v2+v3+v4
-        self.v_count = 6
-        self.v_colors = self.data['bg_color']*6
-        self.set_draw_schedule(0, 1000000)
+        self.vertices = v1+v2+v3+v4
+        self.v_count = 4
+        self.v_index = [0,1,2,1,2,3]
+        self.v_colors = self.data['bg_color']*4
+        self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
+                                          (self.vertex_format, self.vertices),
+                                          (self.color_format , self.v_colors)  )  
         
 class PianoRollObject(DrawablePrimitiveObject):
     def __init__(self, batch, group, clock, **data):
@@ -150,23 +155,24 @@ class PianoRollObject(DrawablePrimitiveObject):
             self.shape_class = Rectangle(**self.data)
         
         self.v_count = self.shape_class.v_count
+        self.v_index = self.shape_class.v_index
         self.vertices = self.shape_class.vertices
         self.v_colors = self.shape_class.v_colors
         
         self.on_time = self.data['note_data']['time_on'] - self.data['track_data']['scroll_on_time'] + self.data['song_data']['offset']
         self.off_time = self.data['note_data']['time_off'] + self.data['track_data']['scroll_off_time'] + self.data['song_data']['offset']
-        self.set_draw_schedule(self.on_time, self.off_time)
-        self.set_object_animations()
-        self.vertex_list = self.batch.add( self.v_count, self.mode, self.group,
+        self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
                                           (self.vertex_format, self.vertices),
-                                          (self.color_format , self.v_colors)  )        
+                                          (self.color_format , self.v_colors)  )
+        self.set_draw_schedule(self.on_time, self.off_time)
+        self.set_object_animations(self.vertex_list)
 
-    def set_object_animations(self):
-        self.scroller = Scroller(self.midi_clock, **self.data)
+    def set_object_animations(self, vertex_list):
+        self.scroller = Scroller(self.midi_clock, vertex_list, **self.data)
         self.animation_list.append(self.scroller)
         
         if 'highlight' in self.data['animation_data']['hit_animations']:
-            self.highlighter = Highlighter(self.midi_clock, **self.data)
+            self.highlighter = Highlighter(self.midi_clock, vertex_list, **self.data)
             self.animation_list.append(self.highlighter)
             
 class Rectangle(object):
@@ -185,9 +191,10 @@ class Rectangle(object):
         v2 = (corner1[0], corner2[1])
         v3 = (corner2[0], corner1[1])
         v4 = (corner2[0], corner2[1])
-        self.vertices = v1+v2+v3+v2+v3+v4
-        self.v_colors = t_data['color']*6
-        self.v_count = 6
+        self.vertices = v1+v2+v3+v4
+        self.v_colors = t_data['color']*4
+        self.v_count = 4
+        self.v_index = [0,1,2,1,2,3]
 
 
 # class ThickBezier(DrawablePrimitiveObject):
