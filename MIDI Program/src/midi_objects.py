@@ -9,66 +9,65 @@ Created on Jul 6, 2013
 import pyglet
 
 class Animator(object):
-    def __init__(self,midi_clock,vertex_list,**data):
+    def __init__(self,midi_clock,vertex_list,data):
         self.midi_clock = midi_clock
         self.vertex_list = vertex_list
+        self.vertex_list_size = self.vertex_list.get_size()        
         self.fps = 60 # frames of animation per midi tick
-        self.a_data = data['animation_data']
-        self.n_data = data['note_data']
-        self.s_data = data['song_data']
-        self.t_data = data['track_data']        
-    def start_animation(self,vertex_list):
+        self.a_data = data['animation']
+        self.m_data = data['morph']
+        self.t_data = data['timing']
+    def start_animation(self,dt): # Used to start ticking animations
         pass
     def animate(self,dt):
         pass
-    def stop_animation(self):
+    def stop_animation(self,dt): # Used to stop ticking animations
         pass
 
 class Highlighter(Animator):
     # Highlights object at specified times    
-    def __init__(self,midi_clock,vertex_list,**data):
-        Animator.__init__(self,midi_clock,vertex_list,**data)
-        self.vertex_list_size = self.vertex_list.get_size()        
-        # Times relative to note creation
-        self.highlight_on =  self.t_data['scroll_on_time']
-        self.highlight_off = self.n_data['time_off'] - self.n_data['time_on'] + self.t_data['scroll_on_time']
-
-    def start_animation(self):
-        self.midi_clock.schedule_once(self.animate, self.highlight_on, self.a_data['highlight_on_color'])
-        self.midi_clock.schedule_once(self.animate, self.highlight_off, self.a_data['highlight_off_color'])
+    def __init__(self,midi_clock,vertex_list,data):
+        Animator.__init__(self,midi_clock,vertex_list,data)
+        self.midi_clock.schedule_once(self.animate, self.t_data['time_on'], self.a_data['highlight_on_color'])
+        self.midi_clock.schedule_once(self.animate, self.t_data['time_off'], self.a_data['highlight_off_color'])
         
-    def animate(self,dt,highlight_color):
+    def animate(self,dt,new_color):
         # Assumes alpha channel present, new color must be list/tuple of 4 ints
         for i in range(self.vertex_list_size):
-            self.vertex_list.colors[4*i]   = highlight_color[0]
-            self.vertex_list.colors[4*i+1] = highlight_color[1]
-            self.vertex_list.colors[4*i+2] = highlight_color[2]            
-            self.vertex_list.colors[4*i+3] = highlight_color[3]
+            self.vertex_list.colors[4*i]   = new_color[0]
+            self.vertex_list.colors[4*i+1] = new_color[1]
+            self.vertex_list.colors[4*i+2] = new_color[2]            
+            self.vertex_list.colors[4*i+3] = new_color[3]
       
 class Scroller(Animator):
     # Scrolls a vertex list by scroll speed
-    def __init__(self,midi_clock,vertex_list,**data):
-        Animator.__init__(self,midi_clock,vertex_list,**data)
-        self.vertex_list_size = self.vertex_list.get_size()
+    def __init__(self,midi_clock,vertex_list,data):
+        Animator.__init__(self,midi_clock,vertex_list,data)
+        self.midi_clock.schedule_once(self.start_animation, self.t_data['scroll_on_time'])
+        self.midi_clock.schedule_once(self.stop_animation, self.t_data['scroll_off_time']+50)
         
-    def start_animation(self):
-        self.midi_clock.schedule_interval(self.animate, 1/self.fps, -self.t_data['speed'])
+    def start_animation(self,dt):
+        self.midi_clock.schedule_interval(self.animate, 1/self.fps, self.a_data['scroll_speed'])
         
     def animate(self,dt,scroll_speed):
         for i in range(self.vertex_list_size):
             self.vertex_list.vertices[2*i] += scroll_speed * dt
             
-    def stop_animation(self):
+    def stop_animation(self,dt):
         self.midi_clock.unschedule(self.animate)
 
 '''------------------------------------------------------'''
             
 class DrawablePrimitiveObject(object):
-    def __init__(self, batch, group, midi_clock):
+    def __init__(self, batch, group, midi_clock, data):
         self.batch = batch
         self.group = group
         self.midi_clock = midi_clock
-        self.animation_list = []
+        self.data = data
+        self.a_data = data['animation']
+        self.m_data = data['morph']
+        self.p_data = data['position']
+        self.t_data = data['timing']
         self.vertex_format = 'v2f'
         self.color_format = 'c4B'
         self.v_count = 0
@@ -79,124 +78,48 @@ class DrawablePrimitiveObject(object):
         self.mode = pyglet.gl.GL_TRIANGLES #default mode
         self.on_time = 0
         self.off_time = 0
-        #self.is_drawn = False
-        
-    #===========================================================================
-    # def draw_object(self,dt):
-    #     # Actually make the vertices of the object
-    #     self.is_drawn = True
-    #     self.vertex_list = self.batch.add( self.v_count, self.mode, self.group,
-    #                                       (self.vertex_format, self.vertices),
-    #                                       (self.color_format , self.v_colors)  )
-    #===========================================================================
-        
-    def delete_object(self,dt):
-        # Turn off updating and delete object
-        self.stop_object_animations()
-        #self.midi_clock.unschedule(self.draw_object)
-        #self.midi_clock.unschedule(self.delete_object)
-        self.vertex_list.delete()
-        #if self.is_drawn == True:
-        #    self.is_drawn = False
-        #    self.vertex_list.delete()
 
-    def reset_object(self,new_clock):
-        # Delete the current object and reschedule its draw and animation times
-        self.delete_object(None)
-        self.midi_clock = new_clock
-        self.set_object_animations()
-        self.set_draw_schedule(self.on_time, self.off_time)
-        
-    def set_draw_schedule(self,on_time,off_time):
-        # Set times to draw and delete object
-        self.on_time = on_time
-        self.off_time = off_time
-        #self.midi_clock.schedule_once(self.draw_object, self.on_time-5)
-        self.midi_clock.schedule_once(self.start_object_animations, self.on_time)
-        self.midi_clock.schedule_once(self.stop_object_animations, self.off_time+240)
-        
-    def set_object_animations(self):
-        pass
-    
-    def start_object_animations(self,dt):
-        for animator in self.animation_list:
-            animator.start_animation()
-                    
-    def stop_object_animations(self,dt):
-        for animator in self.animation_list:
-            animator.stop_animation()
 
 class Background(DrawablePrimitiveObject):
-    def __init__(self, batch, group, clock, **data):
-        DrawablePrimitiveObject.__init__(self, batch, group, clock)
+    def __init__(self, batch, group, clock, data):
+        DrawablePrimitiveObject.__init__(self, batch, group, clock, data)
         self.vertex_format = 'v2f/static'
-        self.data = data
-        v1 = (0,0)
-        v2 = (0,self.data['window_height'])
-        v3 = (self.data['window_width'],0)
-        v4 = (self.data['window_width'],self.data['window_height'])
-        self.vertices = v1+v2+v3+v4
-        self.v_count = 4
-        self.v_index = [0,1,2,1,2,3]
-        self.v_colors = self.data['bg_color']*4
-        self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
-                                          (self.vertex_format, self.vertices),
-                                          (self.color_format , self.v_colors)  )  
-        
-class PianoRollObject(DrawablePrimitiveObject):
-    def __init__(self, batch, group, clock, **data):
-        DrawablePrimitiveObject.__init__(self, batch, group, clock)
-        self.vertex_format = 'v2f/stream'
-        self.data = data        
-            
-        if self.data['track_data']['shape'] == 'rectangle':
-            self.shape_class = Rectangle(**self.data)
-        else:
-            self.shape_class = Rectangle(**self.data)
-        
-        self.v_count = self.shape_class.v_count
-        self.v_index = self.shape_class.v_index
-        self.vertices = self.shape_class.vertices
-        self.v_colors = self.shape_class.v_colors
-        
-        self.on_time = self.data['note_data']['time_on'] - self.data['track_data']['scroll_on_time'] + self.data['song_data']['offset']
-        self.off_time = self.data['note_data']['time_off'] + self.data['track_data']['scroll_off_time'] + self.data['song_data']['offset']
+        make_rectangle(self)
         self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
                                           (self.vertex_format, self.vertices),
                                           (self.color_format , self.v_colors)  )
-        self.set_draw_schedule(self.on_time, self.off_time)
-        self.set_object_animations(self.vertex_list)
-
-    def set_object_animations(self, vertex_list):
-        self.scroller = Scroller(self.midi_clock, vertex_list, **self.data)
-        self.animation_list.append(self.scroller)
         
-        if 'highlight' in self.data['animation_data']['hit_animations']:
-            self.highlighter = Highlighter(self.midi_clock, vertex_list, **self.data)
-            self.animation_list.append(self.highlighter)
+class PianoRollObject(DrawablePrimitiveObject):
+    def __init__(self, batch, group, clock, data):
+        DrawablePrimitiveObject.__init__(self, batch, group, clock, data)
+        self.vertex_format = 'v2f/stream'      
             
-class Rectangle(object):
-    def __init__(self,**data): # note data, track data, screen data
-        n_data = data['note_data']
-        s_data = data['song_data']
-        t_data = data['track_data']
-        # Set default color
-        height = n_data['velocity']/100 * t_data['size']
-        width = (n_data['time_off']-n_data['time_on']) * t_data['speed']
-        center_line = (n_data['pitch']-s_data['min_note'])/(s_data['max_note']-s_data['min_note']) \
-                      *(s_data['window_height']-2*s_data['screen_buffer'])+s_data['screen_buffer']        
-        corner1 = (s_data['window_width']        , center_line - height/2)
-        corner2 = (s_data['window_width'] + width, center_line + height/2)
-        v1 = (corner1[0], corner1[1])
-        v2 = (corner1[0], corner2[1])
-        v3 = (corner2[0], corner1[1])
-        v4 = (corner2[0], corner2[1])
-        self.vertices = v1+v2+v3+v4
-        self.v_colors = t_data['color']*4
-        self.v_count = 4
-        self.v_index = [0,1,2,1,2,3]
+        if self.m_data['shape'] == 'rectangle':
+            make_rectangle(self)
+        else:
+            make_rectangle(self)
+        
+        self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
+                                          (self.vertex_format, self.vertices),
+                                          (self.color_format , self.v_colors)  )
+        self.scroller = Scroller(self.midi_clock, self.vertex_list, self.data)
+        if 'highlight' in self.a_data['hit_animations']:
+            self.highlighter = Highlighter(self.midi_clock, self.vertex_list, self.data)
 
-
+def make_rectangle(n):
+    x = n.p_data['x']
+    y = n.p_data['y']
+    h = n.m_data['height']
+    w = n.m_data['width']
+    v1 = (x,y)
+    v2 = (x,y+h)
+    v3 = (x+w,y)
+    v4 = (x+w,y+h)
+    
+    n.vertices = v1+v2+v3+v4
+    n.v_colors = n.m_data['color']*4
+    n.v_count = 4
+    n.v_index = [0,1,2,1,2,3]
 # class ThickBezier(DrawablePrimitiveObject):
 #     '''
 #     Create Bezier Curve with flat slope at each node

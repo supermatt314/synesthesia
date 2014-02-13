@@ -24,21 +24,23 @@ def get_data(main_window):
       
     # Pre-calculations
     song_data = settings_data['song_data']      
-    song_data['window_width']= window_width = main_window.width
+    song_data['window_width'] = window_width = main_window.width
     song_data['window_height'] = main_window.height
     hit_line = window_width * song_data['hit_line_percent']
     for track in settings_data['track_data'].values():
         offset = 0
         if track['type'] == 'piano_roll':
-            track['scroll_on_time'] = (window_width - hit_line)/track['speed']
-            track['scroll_off_time'] = hit_line/track['speed']
-            offset = max(offset,track['scroll_on_time'])
+            track['scroll_on_amount'] = (window_width - hit_line)/track['speed']
+            track['scroll_off_amount'] = hit_line/track['speed']
+            offset = max(offset,track['scroll_on_amount'])
     song_data['offset'] = offset
 
     global note_list
     note_list = []
     midifile = midi_parse.MidiFile()
-    midifile.read(settings_data['song_data']['midi_file'])  
+    # Reading the midi file will automatically populate 'note_list' via the register_note hook
+    midifile.read(settings_data['song_data']['midi_file'])
+    
     unk_index = 0
     for t in midifile.tracks:
         for e in t.events:
@@ -68,7 +70,7 @@ def get_data(main_window):
     data = {'song_data':song_data,'track_data':settings_data['track_data'],'tempo_data':tempo_data}
     return data
     
-def setup_animation(main_window,data):
+def setup_animation(main_window, data):
     batch = main_window.main_batch
     media_player = main_window.media_player
     midi_clock = main_window.midi_clock
@@ -80,24 +82,59 @@ def setup_animation(main_window,data):
         midi_clock.schedule_once(midi_clock.change_tempo, t['midi_tick'], t['tempo'])    
             
     bg_group = pyglet.graphics.OrderedGroup(0)
-    background = midi_objects.Background(batch,bg_group,pyglet.clock.get_default(),**song_data)
+    bg_data = {'animation': None,
+               'morph': {'shape': 'rectangle',
+                         'color': song_data['bg_color'],
+                         'height': song_data['window_height'],
+                         'width': song_data['window_width']
+                         },
+               'position': {'x': 0,
+                            'y': 0},
+               'timing': None
+               }
+    midi_objects.Background(batch,bg_group,pyglet.clock.get_default(),bg_data)
     
     for track in track_data.values():
+        if track['type'] == 'none':
+            continue        
         group = pyglet.graphics.OrderedGroup(track['z_order'])
-        animation_data = track['animation_data']
         notes = [item for item in note_list if item['track_no']==track['index']]
-        for note in notes:
-            data_to_send = {'song_data':song_data,
-                            'track_data':track,
-                            'animation_data':animation_data,
-                            'note_data':note}
-            if track['type'] == 'piano_roll':
-                thing = midi_objects.PianoRollObject(batch,group,midi_clock,**data_to_send)
-            elif track['type'] == 'none':
-                pass
+        if track['type'] == 'piano_roll':
+            for note in notes:
+                object_data = setup_note_data(song_data, track, note)            
+                midi_objects.PianoRollObject(batch,group,midi_clock,object_data)
+        elif track['type'] == 'static':
+            pass
+        else:
+            assert('Unknown track type')
 
     # Setup music player
     if song_data['mp3_file'] != '':
         music = song_data['mp3_file']
         media_player.set_music(music)
     media_player.set_delay(song_data['mp3_delay'])
+    print('Done setting up')
+    
+    
+def setup_note_data(song, track, note):
+    animation_data = track['animation_data']    
+    morph_data = {'shape': track['shape'],
+                  'color': track['color'],
+                  'height': track['size']*note['velocity']/100
+                  }
+    positional_data = {}
+    timing_data = {'time_on': note['time_on'] + song['offset'],
+                   'time_off': note['time_off'] + song['offset']}
+
+    if track['type'] == 'piano_roll':
+        animation_data['scroll_speed'] = -track['speed']
+        morph_data['width'] = (note['time_off']-note['time_on']) * track['speed']
+        positional_data['x'] = song['window_width']
+        positional_data['y'] = (note['pitch']-song['min_note'])/(song['max_note']-song['min_note']) \
+                                *(song['window_height']-2*song['screen_buffer'])+song['screen_buffer']
+        timing_data['scroll_on_time'] = note['time_on'] - track['scroll_on_amount'] + song['offset']
+        timing_data['scroll_off_time'] = note['time_off'] + track['scroll_off_amount'] + song['offset']
+    elif track['type'] == 'static':
+        pass
+    return {'animation': animation_data, 'morph': morph_data, 'position':positional_data, 'timing':timing_data}
+    
