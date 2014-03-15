@@ -4,7 +4,7 @@ Created on Jul 6, 2013
 @author: matt
 '''
 
-#from math import sqrt
+import math
 import pyglet
 
 class MIDIObjectException(Exception):
@@ -15,7 +15,7 @@ class Animator(object):
         self.midi_clock = midi_object.midi_clock
         self.vertex_list = midi_object.vertex_list
         self.vertex_list_size = self.vertex_list.get_size()        
-        self.fps = 60 # frames of animation per midi tick
+        self.fps = 30
         self.data = data
     def start_animation(self,dt): # Used to start ticking animations
         pass
@@ -70,7 +70,9 @@ class MIDIObject(object):
         self.color_format = 'c4B'
         self.mode = pyglet.gl.GL_TRIANGLES #default mode
         if self.shape == 'rectangle':
-            self.make_rectangle()
+            self._make_rectangle()
+        elif self.shape == 'ellipse':
+            self._make_ellipse()
         else:
             raise MIDIObjectException('Unknown MIDI shape:',self.shape)
         #=======================================================================
@@ -84,6 +86,8 @@ class MIDIObject(object):
                                           (self.color_format , self.v_colors)  )
         self.on_time = 0
         self.off_time = 0
+        self.x = 0
+        self.y = 0        
 
     def set_position(self, x, y):
         '''
@@ -127,7 +131,7 @@ class MIDIObject(object):
                 raise MIDIObjectException('Unknown animation type',animation['type'])
         
         
-    def make_rectangle(self):
+    def _make_rectangle(self):
         h = self.height
         w = self.width
         v1 = (0,-h/2)
@@ -136,13 +140,25 @@ class MIDIObject(object):
         v4 = (w, h/2)
         
         self.vertices = v1+v2+v3+v4
-        self.v_colors = [255,0,0,255]*4 #default color
         self.v_count = 4
-        self.v_index = [0,1,2,1,2,3]
-        self.x = 0
-        self.y = 0      
+        self.v_colors = [255,0,0,255]*self.v_count #default color        
+        self.v_index = [0,1,2,1,2,3]    
 
-
+    def _make_ellipse(self):
+        b = self.height/2
+        a = self.width/2
+        n = 20 # number of outer points
+        self.v_count = n+1
+        self.v_colors = [255,0,0,255]*self.v_count        
+        self.vertices = [a,0]
+        for i in range(n): # top half of ellipse
+            x = a*math.cos(2*math.pi/n*i)
+            y = b*math.sin(2*math.pi/n*i)
+            self.vertices.extend([x+a,y])
+        self.v_index = []
+        for i in range(1,n):
+            self.v_index.extend([0,i,i+1])
+        self.v_index.extend([0,n,1])
 #===============================================================================
 # class Background(DrawablePrimitiveObject):
 #     def __init__(self, batch, group, clock, data):
