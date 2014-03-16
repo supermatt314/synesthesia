@@ -105,8 +105,7 @@ def read_config():
     result = config.validate(validator)
     flat_result = flatten_errors(config,result)
     if flat_result:
-        print('File not validated')
-        return None        
+        print('File not validated', flat_result)     
     else:
         return config
 

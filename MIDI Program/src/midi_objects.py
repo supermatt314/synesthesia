@@ -127,7 +127,6 @@ class MIDIVisualObject(object):
             else:
                 raise MIDIObjectException('Unknown animation type',animation['type'])
         
-        
     def _make_rectangle(self):
         h = self.height
         w = self.width
@@ -176,32 +175,212 @@ class Song(object):
     '''
     def __init__(self):
         self.track_list = []
+        self.tempo_list = []
+        self.global_min_note = 128
+        self.global_max_note = -1
         self.global_offset = 0
+        self.midi_file = None
+        self.mp3_file = None
+        self.mp3_delay = 0
+        self.window_width = 0
+        self.window_height = 0
+        self.unk_track_index = 0
         
-    def register_track(self):
-        new_track = Track()
+    def register_track(self,track_data):
+        new_track = Track(self,track_data)
         self.track_list.append(new_track)
         
+    def register_tempo(self,time,data):
+        new_tempo = Tempo(self,time,data)
+        self.tempo_list.append(new_tempo)
+        sorted(self.tempo_list, key=lambda k: k.midi_tick)
+        for tempo in self.tempo_list:
+            tempo.is_first = False
+        self.tempo_list[0].is_first = True
+        
+    def set_background_color(self,bg_color):
+        self.bg_color = bg_color
+        
+    def set_global_note_bounds(self):
+        for track in self.track_list:
+            self.global_max_note = max(track.max_note,self.global_max_note)
+            self.global_min_note = min(track.min_note,self.global_min_note)
+        
     def set_global_offset(self):
-        pass
+        for track in self.track_list:
+            if track.type == 'piano_roll':
+                self.global_offset = max(track.scroll_on_amount,self.global_offset) 
+    
+    def set_midi_file(self, midi_file):
+        self.midi_file = midi_file
+        
+    def set_mp3_delay(self,delay):
+        if delay < 0:
+            raise MIDIObjectException('MP3 delay less than zero')
+        else:
+            self.mp3_delay = delay        
+        
+    def set_mp3_file(self, mp3_file):
+        self.mp3_file = mp3_file
+
+    def set_window_dimensions(self, window):
+        self.window_height = window.height
+        self.window_width = window.width
+        
+    def get_track_by_index(self, index):
+        for track in self.track_list:
+            if track.index == index:
+                return track
+        else:
+            raise MIDIObjectException('No track found with index:', index)
         
 class Track(object):
     '''
     Data object for track
     '''
-    pass
+    def __init__(self,parent,track_data):
+        self.parent_song = parent
+        self.index = track_data.index
+        self.note_list = []
+        self.min_note = 128
+        self.max_note = -1
+        for e in track_data.events:
+            if e.type == 'SEQUENCE_TRACK_NAME':
+                self.name = e.data.replace(b' ',b'_')
+                break
+        else:
+            self.name = 'Unknown_Name_{}'.format(self.parent_song.unk_track_index)
+            self.parent_song.unk_track_index += 1
+            
+        self.type = 'none'
+        self.shape = 'rectangle'
+        self.size = 12
+        self.color = [255,0,0,255]
+        self.z_order = 255
+            
+    def register_note(self,note_data):
+        new_note = Note(self,note_data)
+        self.note_list.append(new_note)
+        self.min_note = min(new_note.pitch,self.min_note)
+        self.max_note = max(new_note.pitch,self.max_note)
         
+    def setup_visuals(self, batch, midi_clock):
+        self.batch = batch
+        self.midi_clock = midi_clock
+        self.group = pyglet.graphics.OrderedGroup(self.z_order)
+        if self.type == 'none':
+            return
+        elif self.type == 'piano_roll':
+            self._visuals_piano_roll()
+        elif self.type == 'static':
+            self._visuals_static()
+        else:
+            raise MIDIObjectException('Unknown track type', self.type)
+        
+    def set_user_data(self,u):
+        '''
+        Sets the user data for a track
+        User data follows structure of default_config.ini
+        '''
+        self.type = u['type']       
+        self.shape = u['shape']
+        self.size = u['size']
+        self.color = u['color']
+        self.z_order = u['z_order']
+        if self.type == 'piano_roll':
+            if u['min_screen_region']:
+                self.min_screen_region = u['min_screen_region']
+            else:
+                self.min_screen_region = 20
+            if u['max_screen_region']:
+                self.max_screen_region = u['max_screen_region']
+            else:
+                self.max_screen_region = self.parent_song.window_height - 20 
+            if u['speed']:
+                self.speed = u['speed']
+            else:
+                self.speed = 1
+            if u['hit_line_percent']:
+                self.hit_line_percent = u['hit_line_percent']
+            else:
+                self.hit_line_percent = 0.5
+            if u['scale_by_note_length']:
+                self.scale_note_length = u['scale_by_note_length']
+            else:
+                self.scale_note_length = True
+                
+            self.scroll_on_amount  = self.parent_song.window_width/self.speed * (1-self.hit_line_percent)
+            self.scroll_off_amount = self.parent_song.window_width/self.speed * (self.hit_line_percent)
+                
+        self.animation = u['animation_data']
+        
+    def _visuals_piano_roll(self):
+        global_min_note = self.parent_song.global_min_note
+        global_max_note = self.parent_song.global_max_note
+        offset = self.parent_song.global_offset
+        for note in self.note_list:
+            if self.scale_note_length:
+                width = (note.time_off-note.time_on) * self.speed
+            else:
+                width = self.size*note.velocity/100
+            object_data = {'shape': self.shape,
+                           'height': self.size*note.velocity/100,
+                           'width': width
+                          }
+            current_object = MIDIVisualObject(self.batch,self.group,self.midi_clock,object_data)
+            x = self.parent_song.window_width
+            y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
+                *(self.max_screen_region-self.min_screen_region) + self.min_screen_region
+            current_object.set_position(x, y)
+            current_object.set_timing(note.time_on+offset, note.time_off+offset)
+            current_object.set_color(self.color)
+            animation_data = [{'type':'scroll',
+                               'scroll_on_time': note.time_on - self.scroll_on_amount + offset,
+                               'scroll_off_time': note.time_off + self.scroll_off_amount + offset,
+                               'scroll_speed': -self.speed
+                              },
+                              {'type':'highlight',
+                               'highlight_on_color': self.animation['highlight_on_color'],
+                               'highlight_off_color': self.animation['highlight_off_color']
+                              }
+                             ]
+            current_object.set_animations(animation_data)
+    def _visuals_static(self):
+        pass
+
 class Note(object):
     '''
     Data object for individual note
     '''
     def __init__(self,track,note_data):
-        self.track_number = note_data['track_no']
+        self.parent_track = track
+        self.track_index = note_data['track_no']
+        if self.parent_track.index != self.track_index:
+            raise MIDIObjectException('track number mismatch')
+                
         self.channel = note_data['channel']
         self.pitch = note_data['pitch']
         self.velocity = note_data['velocity']
         self.time_on = note_data['time_on']
         self.time_off = note_data['time_off']
+        
+class Tempo(object):
+    '''
+    Data object for tempo change
+    '''
+    def __init__(self,parent,time,data):
+        self.parent_song = parent
+        self.is_first = False
+        self.midi_tick = time
+        self.tempo_raw = data
+        mpqn = int.from_bytes(data, 'big') #microseconds per quarter note
+        self.tempo = int(round(60000000/mpqn,0)) # convert MIDI's ridiculous tempo numbers into beats per minute
+        
+    def schedule_tempo(self,midi_clock):
+        if self.is_first:
+            midi_clock.schedule_once(midi_clock.change_tempo, self.midi_tick, self.tempo)
+        else:
+            midi_clock.schedule_once(midi_clock.change_tempo, self.midi_tick+self.parent_song.global_offset, self.tempo)
     
 #===============================================================================
 # class Background(DrawablePrimitiveObject):
