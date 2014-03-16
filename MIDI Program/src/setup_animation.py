@@ -86,7 +86,7 @@ def setup_animation(main_window, data):
                'height': song_data['window_height'],
                'width': song_data['window_width']
                }
-    background = midi_objects.MIDIObject(batch,bg_group,pyglet.clock.get_default(),bg_data)
+    background = midi_objects.MIDIVisualObject(batch,bg_group,pyglet.clock.get_default(),bg_data)
     background.set_position(0, song_data['window_height']/2)
     background.set_color(song_data['bg_color'])
     
@@ -101,7 +101,7 @@ def setup_animation(main_window, data):
                                'height': track['size']*note['velocity']/100,
                                'width': (note['time_off']-note['time_on']) * track['speed']
                               }
-                current_object = midi_objects.MIDIObject(batch,group,midi_clock,object_data)
+                current_object = midi_objects.MIDIVisualObject(batch,group,midi_clock,object_data)
                 x = song_data['window_width']
                 y = (note['pitch']-song_data['min_note'])/(song_data['max_note']-song_data['min_note']) \
                     *(song_data['window_height']-2*song_data['screen_buffer'])+song_data['screen_buffer']

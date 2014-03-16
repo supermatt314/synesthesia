@@ -15,7 +15,7 @@ class Animator(object):
         self.midi_clock = midi_object.midi_clock
         self.vertex_list = midi_object.vertex_list
         self.vertex_list_size = self.vertex_list.get_size()        
-        self.fps = 30
+        self.fps = 60
         self.data = data
     def start_animation(self,dt): # Used to start ticking animations
         pass
@@ -58,7 +58,7 @@ class Scroller(Animator):
 
 '''------------------------------------------------------'''
             
-class MIDIObject(object):
+class MIDIVisualObject(object):
     def __init__(self, batch, group, midi_clock, data):
         self.batch = batch
         self.group = group
@@ -73,19 +73,16 @@ class MIDIObject(object):
             self._make_rectangle()
         elif self.shape == 'ellipse':
             self._make_ellipse()
+        elif self.shape == 'diamond':
+            self._make_diamond()
         else:
             raise MIDIObjectException('Unknown MIDI shape:',self.shape)
-        #=======================================================================
-        # self.v_count = 0
-        # self.v_index = []
-        # self.vertices = ()
-        # self.v_colors = ()
-        #=======================================================================
+
         self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
                                           (self.vertex_format, self.vertices),
                                           (self.color_format , self.v_colors)  )
-        self.on_time = 0
-        self.off_time = 0
+        self.on_time = None
+        self.off_time = None
         self.x = 0
         self.y = 0        
 
@@ -159,6 +156,53 @@ class MIDIObject(object):
         for i in range(1,n):
             self.v_index.extend([0,i,i+1])
         self.v_index.extend([0,n,1])
+        
+    def _make_diamond(self):
+        h = self.height
+        w = self.width
+        v1 = (0,0)
+        v2 = (w/2,h/2)
+        v3 = (w/2,-h/2)
+        v4 = (w,0)
+        
+        self.vertices = v1+v2+v3+v4
+        self.v_count = 4
+        self.v_colors = [255,0,0,255]*self.v_count #default color        
+        self.v_index = [0,1,2,1,2,3]
+
+class Song(object):
+    '''
+    Data object for entire song
+    '''
+    def __init__(self):
+        self.track_list = []
+        self.global_offset = 0
+        
+    def register_track(self):
+        new_track = Track()
+        self.track_list.append(new_track)
+        
+    def set_global_offset(self):
+        pass
+        
+class Track(object):
+    '''
+    Data object for track
+    '''
+    pass
+        
+class Note(object):
+    '''
+    Data object for individual note
+    '''
+    def __init__(self,track,note_data):
+        self.track_number = note_data['track_no']
+        self.channel = note_data['channel']
+        self.pitch = note_data['pitch']
+        self.velocity = note_data['velocity']
+        self.time_on = note_data['time_on']
+        self.time_off = note_data['time_off']
+    
 #===============================================================================
 # class Background(DrawablePrimitiveObject):
 #     def __init__(self, batch, group, clock, data):

@@ -4,7 +4,7 @@ Created on Feb 7, 2014
 @author: Matt
 '''
 
-from configobj import ConfigObj
+from configobj import ConfigObj, flatten_errors
 import tkinter as tk
 import tkinter.filedialog as filedialog
 import os
@@ -103,9 +103,10 @@ def read_config():
     validator.functions['color_list'] = color_list
     config = ConfigObj(config_filename,configspec=configspec_filename)
     result = config.validate(validator)
-    if not result:
-        print("File not validated")
-        return None
+    flat_result = flatten_errors(config,result)
+    if flat_result:
+        print('File not validated')
+        return None        
     else:
         return config
 

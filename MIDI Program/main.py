@@ -18,7 +18,7 @@ def initial_setup():
     glHint(GL_POLYGON_SMOOTH_HINT,GL_NICEST)
    
     # Window setup
-    config = pyglet.gl.Config(double_buffer=1)
+    config = pyglet.gl.Config(sample_buffers=1, samples=4, double_buffer=1)
     main_window = PlaybackWindow(1280, 720, config=config)
    
     return main_window
