@@ -122,7 +122,7 @@ class PlaybackWindow(pyglet.window.Window):
         if 'title' in args:
                 self.title_text = pyglet.text.Label("SYNESTHESIA",
                                                          font_name='Arial',
-                                                         font_size=24,
+                                                         font_size=28,
                                                          x=self.width/2,
                                                          y=self.height/2,
                                                          anchor_x='center',
