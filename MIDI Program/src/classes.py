@@ -120,7 +120,7 @@ class PlaybackWindow(pyglet.window.Window):
                 
     def draw_text(self,*args):
         if 'title' in args:
-                self.title_text = pyglet.text.Label("WELCOME TO MATT'S MIDI PROGRAM THINGY",
+                self.title_text = pyglet.text.Label("SYNESTHESIA",
                                                          font_name='Arial',
                                                          font_size=24,
                                                          x=self.width/2,
