@@ -12,6 +12,9 @@ import validate as val
 import midi_parse
 
 def create_new_config():
+    '''
+    Create new config file from MIDI file
+    '''
     root = tk.Tk()
     root.withdraw()
     options = {'defaultextension':'.mid',
@@ -45,8 +48,6 @@ def create_new_config():
                  'midi_file': midi_filename,
                  'mp3_file': mp3_filename,
                  'mp3_delay': 0,
-                 'screen_buffer': 20,
-                 'hit_line_percent': 0.5,
                  'bg_color': [0,0,0,255]
                  }
     new_config['song_data'] = song_data
@@ -69,16 +70,11 @@ def create_new_config():
             name = name + '_{}'.format(extra_name_index)
             extra_name_index += 1
         track_data[name] = {'index':t.index,
-                            'type':'piano_roll',
-                            'shape':'rectangle',
-                            'size':10,
-                            'speed':1,
-                            'color':(255,0,0,255),
                             'z_order':t.index,
-                            'animation_data':{
-                                              'hit_animations':['highlight'],
-                                              'highlight_on_color': (255,200,200,255),
-                                              'highlight_off_color': (255,0,0,255),
+                            'style':'simple',
+                            'style_parameters':{
+                                              'color':(255,0,0,255),
+                                              'highlight_color': (255,200,200,255),
                                               }
                             }
     new_config['track_data'] = track_data

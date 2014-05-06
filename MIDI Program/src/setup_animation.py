@@ -118,8 +118,7 @@ def setup_animation(main_window, song):
     background.set_position(0, song.window_height/2)
     background.set_color(song.bg_color)
     
-    for track in song.track_list:
-        track.setup_visuals(batch, midi_clock)
+    song.setup_visuals(batch, midi_clock)
         #=======================================================================
         # if track.type == 'none':
         #     continue        

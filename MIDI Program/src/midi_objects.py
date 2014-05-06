@@ -6,6 +6,7 @@ Created on Jul 6, 2013
 
 import math
 import pyglet
+import style
 
 class MIDIObjectException(Exception):
     pass
@@ -208,8 +209,11 @@ class Song(object):
         
     def set_global_offset(self):
         for track in self.track_list:
-            if track.type == 'piano_roll':
-                self.global_offset = max(track.scroll_on_amount,self.global_offset) 
+            if track.style in style.style_list.keys():
+                if style.style_list[track.style].is_scrolling:
+                    self.global_offset = max(track.scroll_on_amount,self.global_offset)
+            else:
+                raise MIDIObjectException('Style {} not found'.format(track.style))
     
     def set_midi_file(self, midi_file):
         self.midi_file = midi_file
@@ -227,6 +231,15 @@ class Song(object):
         self.window_height = window.height
         self.window_width = window.width
         
+    def setup_visuals(self, batch, midi_clock):
+        self.batch = batch
+        self.midi_clock = midi_clock
+        for track in self.track_list:
+            if track.style in style.style_list.keys():
+                style.style_list[track.style].draw_function(track)
+            else:
+                raise MIDIObjectException('Style {} not found'.format(track.style))
+        
     def get_track_by_index(self, index):
         for track in self.track_list:
             if track.index == index:
@@ -242,6 +255,7 @@ class Track(object):
         self.parent_song = parent
         self.index = track_data.index
         self.note_list = []
+        self.volume_list = []
         self.min_note = 128
         self.max_note = -1
         for e in track_data.events:
@@ -252,11 +266,15 @@ class Track(object):
             self.name = 'Unknown_Name_{}'.format(self.parent_song.unk_track_index)
             self.parent_song.unk_track_index += 1
             
-        self.type = 'none'
-        self.shape = 'rectangle'
-        self.size = 12
-        self.color = [255,0,0,255]
+        #=======================================================================
+        # self.type = 'none'
+        # self.shape = 'rectangle'
+        # self.size = 12
+        # self.color = [255,0,0,255]
+        #=======================================================================
         self.z_order = 255
+        self.style = 'none'
+        self.style_parameters = {}
             
     def register_note(self,note_data):
         new_note = Note(self,note_data)
@@ -264,55 +282,67 @@ class Track(object):
         self.min_note = min(new_note.pitch,self.min_note)
         self.max_note = max(new_note.pitch,self.max_note)
         
-    def setup_visuals(self, batch, midi_clock):
-        self.batch = batch
-        self.midi_clock = midi_clock
-        self.group = pyglet.graphics.OrderedGroup(self.z_order)
-        if self.type == 'none':
-            return
-        elif self.type == 'piano_roll':
-            self._visuals_piano_roll()
-        elif self.type == 'static':
-            self._visuals_static()
-        else:
-            raise MIDIObjectException('Unknown track type', self.type)
+    #===========================================================================
+    # def setup_visuals(self, batch, midi_clock):
+    #     self.batch = batch
+    #     self.midi_clock = midi_clock
+    #     self.group = pyglet.graphics.OrderedGroup(self.z_order)
+    #     if self.type == 'none':
+    #         return
+    #     elif self.type == 'piano_roll':
+    #         self._visuals_piano_roll()
+    #     elif self.type == 'static':
+    #         self._visuals_static()
+    #     else:
+    #         raise MIDIObjectException('Unknown track type', self.type)
+    #===========================================================================
         
     def set_user_data(self,u):
         '''
         Sets the user data for a track
         User data follows structure of default_config.ini
         '''
-        self.type = u['type']       
-        self.shape = u['shape']
-        self.size = u['size']
-        self.color = u['color']
         self.z_order = u['z_order']
-        if self.type == 'piano_roll':
-            if u['min_screen_region']:
-                self.min_screen_region = u['min_screen_region']
-            else:
-                self.min_screen_region = 20
-            if u['max_screen_region']:
-                self.max_screen_region = u['max_screen_region']
-            else:
-                self.max_screen_region = self.parent_song.window_height - 20 
-            if u['speed']:
-                self.speed = u['speed']
-            else:
-                self.speed = 1
-            if u['hit_line_percent']:
-                self.hit_line_percent = u['hit_line_percent']
-            else:
-                self.hit_line_percent = 0.5
-            if u['scale_by_note_length']:
-                self.scale_note_length = u['scale_by_note_length']
-            else:
-                self.scale_note_length = True
-                
-            self.scroll_on_amount  = self.parent_song.window_width/self.speed * (1-self.hit_line_percent)
-            self.scroll_off_amount = self.parent_song.window_width/self.speed * (self.hit_line_percent)
-                
-        self.animation = u['animation_data']
+        self.style = u['style']
+        self.style_parameters = u['style_parameters']
+        if self.style in style.style_list.keys():
+            style.style_list[self.style].validate(self)
+        else:
+            raise MIDIObjectException('Style {} not found'.format(self.style))
+        ### validate style parameters, set up track offsets
+        #=======================================================================
+        # self.type = u['type']       
+        # self.shape = u['shape']
+        # self.size = u['size']
+        # self.color = u['color']
+        # self.z_order = u['z_order']
+        # if self.type == 'piano_roll':
+        #     if u['min_screen_region']:
+        #         self.min_screen_region = u['min_screen_region']
+        #     else:
+        #         self.min_screen_region = 20
+        #     if u['max_screen_region']:
+        #         self.max_screen_region = u['max_screen_region']
+        #     else:
+        #         self.max_screen_region = self.parent_song.window_height - 20 
+        #     if u['speed']:
+        #         self.speed = u['speed']
+        #     else:
+        #         self.speed = 1
+        #     if u['hit_line_percent']:
+        #         self.hit_line_percent = u['hit_line_percent']
+        #     else:
+        #         self.hit_line_percent = 0.5
+        #     if u['scale_by_note_length']:
+        #         self.scale_note_length = u['scale_by_note_length']
+        #     else:
+        #         self.scale_note_length = True
+        #         
+        #     self.scroll_on_amount  = self.parent_song.window_width/self.speed * (1-self.hit_line_percent)
+        #     self.scroll_off_amount = self.parent_song.window_width/self.speed * (self.hit_line_percent)
+        #         
+        # self.animation = u['animation_data']
+        #=======================================================================
         
     def _visuals_piano_roll(self):
         global_min_note = self.parent_song.global_min_note
