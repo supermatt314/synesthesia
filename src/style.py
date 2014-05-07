@@ -13,7 +13,7 @@ class Base_Style(object):
         self.draw_function = None        
         self.is_scrolling = False
         
-    def validate(self):
+    def validate(self, track):
         pass
 
 class No_Style(Base_Style):
