@@ -170,6 +170,8 @@ class MIDIVisualObject(object):
         self.v_colors = [255,0,0,255]*self.v_count #default color        
         self.v_index = [0,1,2,1,2,3]
 
+'''------------------------------------------------------'''
+
 class Song(object):
     '''
     Data object for entire song
@@ -265,13 +267,7 @@ class Track(object):
         else:
             self.name = 'Unknown_Name_{}'.format(self.parent_song.unk_track_index)
             self.parent_song.unk_track_index += 1
-            
-        #=======================================================================
-        # self.type = 'none'
-        # self.shape = 'rectangle'
-        # self.size = 12
-        # self.color = [255,0,0,255]
-        #=======================================================================
+
         self.z_order = 255
         self.style = 'none'
         self.style_parameters = {}
@@ -281,21 +277,6 @@ class Track(object):
         self.note_list.append(new_note)
         self.min_note = min(new_note.pitch,self.min_note)
         self.max_note = max(new_note.pitch,self.max_note)
-        
-    #===========================================================================
-    # def setup_visuals(self, batch, midi_clock):
-    #     self.batch = batch
-    #     self.midi_clock = midi_clock
-    #     self.group = pyglet.graphics.OrderedGroup(self.z_order)
-    #     if self.type == 'none':
-    #         return
-    #     elif self.type == 'piano_roll':
-    #         self._visuals_piano_roll()
-    #     elif self.type == 'static':
-    #         self._visuals_static()
-    #     else:
-    #         raise MIDIObjectException('Unknown track type', self.type)
-    #===========================================================================
         
     def set_user_data(self,u):
         '''
@@ -309,74 +290,6 @@ class Track(object):
             style.style_list[self.style].validate(self)
         else:
             raise MIDIObjectException('Style {} not found'.format(self.style))
-        ### validate style parameters, set up track offsets
-        #=======================================================================
-        # self.type = u['type']       
-        # self.shape = u['shape']
-        # self.size = u['size']
-        # self.color = u['color']
-        # self.z_order = u['z_order']
-        # if self.type == 'piano_roll':
-        #     if u['min_screen_region']:
-        #         self.min_screen_region = u['min_screen_region']
-        #     else:
-        #         self.min_screen_region = 20
-        #     if u['max_screen_region']:
-        #         self.max_screen_region = u['max_screen_region']
-        #     else:
-        #         self.max_screen_region = self.parent_song.window_height - 20 
-        #     if u['speed']:
-        #         self.speed = u['speed']
-        #     else:
-        #         self.speed = 1
-        #     if u['hit_line_percent']:
-        #         self.hit_line_percent = u['hit_line_percent']
-        #     else:
-        #         self.hit_line_percent = 0.5
-        #     if u['scale_by_note_length']:
-        #         self.scale_note_length = u['scale_by_note_length']
-        #     else:
-        #         self.scale_note_length = True
-        #         
-        #     self.scroll_on_amount  = self.parent_song.window_width/self.speed * (1-self.hit_line_percent)
-        #     self.scroll_off_amount = self.parent_song.window_width/self.speed * (self.hit_line_percent)
-        #         
-        # self.animation = u['animation_data']
-        #=======================================================================
-        
-    def _visuals_piano_roll(self):
-        global_min_note = self.parent_song.global_min_note
-        global_max_note = self.parent_song.global_max_note
-        offset = self.parent_song.global_offset
-        for note in self.note_list:
-            if self.scale_note_length:
-                width = (note.time_off-note.time_on) * self.speed
-            else:
-                width = self.size*note.velocity/100
-            object_data = {'shape': self.shape,
-                           'height': self.size*note.velocity/100,
-                           'width': width
-                          }
-            current_object = MIDIVisualObject(self.batch,self.group,self.midi_clock,object_data)
-            x = self.parent_song.window_width
-            y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
-                *(self.max_screen_region-self.min_screen_region) + self.min_screen_region
-            current_object.set_position(x, y)
-            current_object.set_timing(note.time_on+offset, note.time_off+offset)
-            current_object.set_color(self.color)
-            animation_data = [{'type':'scroll',
-                               'scroll_on_time': note.time_on - self.scroll_on_amount + offset,
-                               'scroll_off_time': note.time_off + self.scroll_off_amount + offset,
-                               'scroll_speed': -self.speed
-                              },
-                              {'type':'highlight',
-                               'highlight_on_color': self.animation['highlight_on_color'],
-                               'highlight_off_color': self.animation['highlight_off_color']
-                              }
-                             ]
-            current_object.set_animations(animation_data)
-    def _visuals_static(self):
-        pass
 
 class Note(object):
     '''
@@ -411,74 +324,4 @@ class Tempo(object):
             midi_clock.schedule_once(midi_clock.change_tempo, self.midi_tick, self.tempo)
         else:
             midi_clock.schedule_once(midi_clock.change_tempo, self.midi_tick+self.parent_song.global_offset, self.tempo)
-    
-#===============================================================================
-# class Background(DrawablePrimitiveObject):
-#     def __init__(self, batch, group, clock, data):
-#         DrawablePrimitiveObject.__init__(self, batch, group, clock, data)
-#         self.vertex_format = 'v2f/static'
-#         make_rectangle(self)
-#         self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
-#                                           (self.vertex_format, self.vertices),
-#                                           (self.color_format , self.v_colors)  )
-#         
-# class PianoRollObject(DrawablePrimitiveObject):
-#     def __init__(self, batch, group, clock, data):
-#         DrawablePrimitiveObject.__init__(self, batch, group, clock, data)
-#         self.vertex_format = 'v2f/stream'      
-#             
-#         if self.m_data['shape'] == 'rectangle':
-#             make_rectangle(self)
-#         else:
-#             make_rectangle(self)
-#         
-#         self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
-#                                           (self.vertex_format, self.vertices),
-#                                           (self.color_format , self.v_colors)  )
-#         self.scroller = Scroller(self.midi_clock, self.vertex_list, self.data)
-#         if 'highlight' in self.a_data['hit_animations']:
-#             self.highlighter = Highlighter(self.midi_clock, self.vertex_list, self.data)
-#===============================================================================
-
-
-# class ThickBezier(DrawablePrimitiveObject):
-#     '''
-#     Create Bezier Curve with flat slope at each node
-#     '''
-#     def __init__(self,group,batch,midi_clock,point_list,width=5,color=(255,0,0,255)):
-#         DrawablePrimitiveObject.__init__(self,group,batch,midi_clock)
-#         self.mode = pyglet.gl.GL_TRIANGLE_STRIP
-#         for i in range(len(point_list)-1):
-#             P0 = point_list[i]
-#             P3 = point_list[i+1]
-#             P1 = ((P3[0]+P0[0])/2, P0[1])
-#             P2 = ((P3[0]+P0[0])/2, P3[1])
-#             C0x, C0y =  1*P0[0]                               ,  1*P0[1]
-#             C1x, C1y = -3*P0[0] + 3*P1[0]                     , -3*P0[1] + 3*P1[1]
-#             C2x, C2y =  3*P0[0] - 6*P1[0] + 3*P2[0]           ,  3*P0[1] - 6*P1[1] + 3*P2[1]
-#             C3x, C3y = -1*P0[0] + 3*P1[0] - 3*P2[0] + 1*P3[0] , -1*P0[1] + 3*P1[1] - 3*P2[1] + 1*P3[1]
-#             
-#             Cp0x, Cp0y = -3*P0[0] +  3*P1[0]                     , -3*P0[1] +  3*P1[1]
-#             Cp1x, Cp1y =  6*P0[0] - 12*P1[0] + 6*P2[0]           ,  6*P0[1] - 12*P1[1] + 6*P2[1]
-#             Cp2x, Cp2y = -3*P0[0] +  9*P1[0] - 9*P2[0] + 3*P3[0] , -3*P0[1] +  9*P1[1] - 9*P2[1] + 3*P3[1]
-#             
-#             t = 0
-#             while t <= 1.0:
-#                 Bx  = C0x  + C1x *t + C2x *t**2 + C3x*t**3
-#                 By  = C0y  + C1y *t + C2y *t**2 + C3y*t**3
-#                 Bpx = Cp0x + Cp1x*t + Cp2x*t**2
-#                 Bpy = Cp0y + Cp1y*t + Cp2y*t**2
-#                 
-#                 Bnorm = sqrt(Bpx**2 + Bpy**2)
-#                 Nx =  Bpy / Bnorm
-#                 Ny = -Bpx / Bnorm
-#                 
-#                 vertex_1 = (Bx+width*Nx,By+width*Ny)
-#                 vertex_2 = (Bx-width*Nx,By-width*Ny)
-#                 self.vertices.extend(vertex_1+vertex_2)
-#                 self.count += 2
-#                 
-#                 t += 0.01
-#                 
-#         self.v_colors.extend(color*self.count)
             
