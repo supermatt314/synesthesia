@@ -289,7 +289,7 @@ class Track(object):
         if self.style in style.style_list.keys():
             style.style_list[self.style].validate(self)
         else:
-            raise MIDIObjectException('Style {} not found'.format(self.style))
+            raise MIDIObjectException('Style not found:',self.style)
 
 class Note(object):
     '''
