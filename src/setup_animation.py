@@ -29,20 +29,6 @@ def get_data(main_window):
     song.set_mp3_delay(settings_data['song_data']['mp3_delay'])
     song.set_window_dimensions(main_window)
     song.set_background_color(settings_data['song_data']['bg_color'])
-    #===========================================================================
-    # # Pre-calculations
-    # song_data = settings_data['song_data']
-    # song_data['window_width'] = window_width = main_window.width
-    # song_data['window_height'] = main_window.height
-    # hit_line = window_width * song_data['hit_line_percent']
-    # for track in settings_data['track_data'].values():
-    #     offset = 0
-    #     if track['type'] == 'piano_roll':
-    #         track['scroll_on_amount'] = (window_width - hit_line)/track['speed']
-    #         track['scroll_off_amount'] = hit_line/track['speed']
-    #         offset = max(offset,track['scroll_on_amount'])
-    # song_data['offset'] = offset
-    #===========================================================================
 
     global note_list
     note_list = []
@@ -66,39 +52,6 @@ def get_data(main_window):
                 track.set_user_data(user_data)    
     song.set_global_offset()
     song.set_global_note_bounds()
-    #===========================================================================
-    # unk_index = 0
-    # for t in midifile.tracks:
-    #     for e in t.events:
-    #         if e.type == 'SEQUENCE_TRACK_NAME':
-    #             name = e.data.replace(b' ',b'_')
-    #             break
-    #     else:
-    #         name = 'Unknown_Name_{}'.format(unk_index)
-    #         unk_index += 1
-    #     for note in note_list:
-    #         if note['track_no'] == t.index:
-    #             note['track_name'] = name
-    #===========================================================================
-                
-    #===========================================================================
-    # tempo_data = [{'midi_tick':e.time, 'tempo_raw':e.data} for t in midifile.tracks for e in t.events if e.type == "SET_TEMPO"]
-    # for t in tempo_data:
-    #     mpqn = int.from_bytes(t['tempo_raw'], 'big') #microseconds per quarter note
-    #     t['tempo'] = int(round(60000000/mpqn,0)) # convert MIDI's ridiculous tempo numbers into beats per minute
-    # sorted(tempo_data, key=lambda k: k['midi_tick'])
-    # tempo_data[0]['midi_tick'] = 0
-    #===========================================================================
-
-    #===========================================================================
-    # max_note, min_note = 0, 127
-    # for note in note_list:
-    #     max_note = max(max_note,note['pitch'])
-    #     min_note = min(min_note,note['pitch'])
-    # song_data['max_note'], song_data['min_note'] = max_note, min_note
-    #===========================================================================
-    
-    #data = {'song_data':song_data,'track_data':settings_data['track_data'],'tempo_data':tempo_data}
     return song
     
 def setup_animation(main_window, song):
@@ -119,42 +72,6 @@ def setup_animation(main_window, song):
     background.set_color(song.bg_color)
     
     song.setup_visuals(batch, midi_clock)
-        #=======================================================================
-        # if track.type == 'none':
-        #     continue        
-        # group = pyglet.graphics.OrderedGroup(track.z_order)
-        # notes = [item for item in note_list if item['track_no']==track['index']]
-        # if track['type'] == 'piano_roll':
-        #     for note in notes:
-        #         object_data = {'shape': track['shape'],
-        #                        'height': track['size']*note['velocity']/100,
-        #                        'width': (note['time_off']-note['time_on']) * track['speed']
-        #                       }
-        #         current_object = midi_objects.MIDIVisualObject(batch,group,midi_clock,object_data)
-        #         x = song_data['window_width']
-        #         y = (note['pitch']-song_data['min_note'])/(song_data['max_note']-song_data['min_note']) \
-        #             *(song_data['window_height']-2*song_data['screen_buffer'])+song_data['screen_buffer']
-        #         current_object.set_position(x, y)
-        #         current_object.set_color(track['color'])
-        #         on_time = note['time_on']+song_data['offset']
-        #         off_time = note['time_off']+song_data['offset']
-        #         current_object.set_timing(on_time, off_time)
-        #         animation_data = [{'type':'scroll',
-        #                            'scroll_on_time': note['time_on'] - track['scroll_on_amount'] + song_data['offset'],
-        #                            'scroll_off_time':note['time_off'] + track['scroll_off_amount'] + song_data['offset'],
-        #                            'scroll_speed': -track['speed']
-        #                           },
-        #                           {'type':'highlight',
-        #                            'highlight_on_color':track['animation_data']['highlight_on_color'],
-        #                            'highlight_off_color':track['animation_data']['highlight_off_color']
-        #                           }
-        #                          ]
-        #         current_object.set_animations(animation_data)
-        # elif track['type'] == 'static':
-        #     pass
-        # else:
-        #     assert('Unknown track type')
-        #=======================================================================
 
     # Setup music player
     if song.mp3_file != '':
@@ -162,29 +79,3 @@ def setup_animation(main_window, song):
         media_player.set_music(music)
     media_player.set_delay(song.mp3_delay)
     print('Done setting up')
-    
-    
-#===============================================================================
-# def setup_note_data(song, track, note):
-#     animation_data = track['animation_data']    
-#     morph_data = {'shape': track['shape'],
-#                   'color': track['color'],
-#                   'height': track['size']*note['velocity']/100
-#                   }
-#     positional_data = {}
-#     timing_data = {'time_on': note['time_on'] + song['offset'],
-#                    'time_off': note['time_off'] + song['offset']}
-# 
-#     if track['type'] == 'piano_roll':
-#         animation_data['scroll_speed'] = -track['speed']
-#         morph_data['width'] = (note['time_off']-note['time_on']) * track['speed']
-#         positional_data['x'] = song['window_width']
-#         positional_data['y'] = (note['pitch']-song['min_note'])/(song['max_note']-song['min_note']) \
-#                                 *(song['window_height']-2*song['screen_buffer'])+song['screen_buffer']
-#         timing_data['scroll_on_time'] = note['time_on'] - track['scroll_on_amount'] + song['offset']
-#         timing_data['scroll_off_time'] = note['time_off'] + track['scroll_off_amount'] + song['offset']
-#     elif track['type'] == 'static':
-#         pass
-#     return {'animation': animation_data, 'morph': morph_data, 'position':positional_data, 'timing':timing_data}
-#     
-#===============================================================================
