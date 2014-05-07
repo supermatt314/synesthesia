@@ -90,7 +90,10 @@ class Simple(Base_Style):
                            'height': track.size*note.velocity/100,
                            'width': width
                           }
-            current_object = midi_objects.MIDIVisualObject(track.parent_song.batch,track.group,track.parent_song.midi_clock,object_data)
+            current_object = midi_objects.MIDIVisualObject(track.parent_song.batch,
+                                                           track.group,
+                                                           track.parent_song.midi_clock,
+                                                           object_data)
             x = track.parent_song.window_width
             y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
                 *(track.max_screen_region-track.min_screen_region) + track.min_screen_region
@@ -98,14 +101,18 @@ class Simple(Base_Style):
             current_object.set_timing(note.time_on+offset, note.time_off+offset)
             current_object.set_color(track.color)
             animation_data = [{'type':'scroll',
-                               'scroll_on_time': note.time_on - track.scroll_on_amount + offset,
-                               'scroll_off_time': note.time_off + track.scroll_off_amount + offset,
+                               'scroll_on_time': current_object.time_on - track.scroll_on_amount,
+                               'scroll_off_time': current_object.time_off + track.scroll_off_amount,
                                'scroll_speed': -track.speed
                               },
                               {'type':'highlight',
-                               'highlight_on_color': track.highlight_color,
-                               'highlight_off_color': track.color,
-                              }
+                               'time': current_object.time_on,
+                               'color': track.highlight_color,
+                              },
+                              {'type':'highlight',
+                               'time': current_object.time_off,
+                               'color': track.color,
+                              },
                              ]
             current_object.set_animations(animation_data)
         return

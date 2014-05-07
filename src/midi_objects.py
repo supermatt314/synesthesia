@@ -12,27 +12,43 @@ class MIDIObjectException(Exception):
     pass
 
 class Animator(object):
-    def __init__(self,midi_object,data):
+    def __init__(self,midi_object):
         self.midi_clock = midi_object.midi_clock
         self.vertex_list = midi_object.vertex_list
         self.vertex_list_size = self.vertex_list.get_size()        
         self.fps = 60
-        self.data = data
-    def start_animation(self,dt): # Used to start ticking animations
-        pass
-    def animate(self,dt):
-        pass
-    def stop_animation(self,dt): # Used to stop ticking animations
-        pass
+        
+class Fader(Animator):
+    # Gradually changes color over time
+    def __init__(self,midi_object,start_time,end_time,start_color,end_color):
+        Animator.__init__(self,midi_object)
+        r_speed = (end_color[0]-start_color[0])/(end_time-start_time)
+        g_speed = (end_color[1]-start_color[1])/(end_time-start_time)
+        b_speed = (end_color[2]-start_color[2])/(end_time-start_time)
+        a_speed = (end_color[3]-start_color[3])/(end_time-start_time)
+        self.fade_speed = [r_speed, g_speed, b_speed, a_speed]
+        self.midi_clock.schedule_once(self.start_animation, start_time)
+        
+        def start_animation(self,dt):
+            self.midi_clock.schedule_interval(self.fade, 1/self.fps, self.fade_speed)
+        
+        def stop_animation(self,dt):
+            self.midi_clock.unschedule(self.fade)
+        
+        def fade(self,dt,fade_speed):
+            for i in range(self.vertex_list_size):
+                self.vertex_list.colors[4*i]   += fade_speed[0] * dt
+                self.vertex_list.colors[4*i+1] += fade_speed[1] * dt
+                self.vertex_list.colors[4*i+2] += fade_speed[2] * dt
+                self.vertex_list.colors[4*i+3] += fade_speed[3] * dt
 
 class Highlighter(Animator):
-    # Highlights object at specified times    
-    def __init__(self,midi_object,data):
-        Animator.__init__(self,midi_object,data)
-        self.midi_clock.schedule_once(self.animate, midi_object.on_time, self.data['highlight_on_color'])
-        self.midi_clock.schedule_once(self.animate, midi_object.off_time, self.data['highlight_off_color'])
+    # Changes object color at specified time    
+    def __init__(self,midi_object,time,color):
+        Animator.__init__(self,midi_object)
+        self.midi_clock.schedule_once(self.highlight, time, color)
         
-    def animate(self,dt,new_color):
+    def highlight(self,dt,new_color):
         # Assumes alpha channel present, new color must be list/tuple of 4 ints
         for i in range(self.vertex_list_size):
             self.vertex_list.colors[4*i]   = new_color[0]
@@ -42,13 +58,14 @@ class Highlighter(Animator):
       
 class Scroller(Animator):
     # Scrolls a vertex list by scroll speed
-    def __init__(self,midi_object,data):
-        Animator.__init__(self,midi_object,data)
-        self.midi_clock.schedule_once(self.start_animation, self.data['scroll_on_time'])
-        self.midi_clock.schedule_once(self.stop_animation, self.data['scroll_off_time']+50)
+    def __init__(self,midi_object,start_time,end_time,speed):
+        Animator.__init__(self,midi_object)
+        self.midi_clock.schedule_once(self.start_animation, start_time)
+        self.midi_clock.schedule_once(self.stop_animation, end_time+50)
+        self.speed = speed
         
     def start_animation(self,dt):
-        self.midi_clock.schedule_interval(self.animate, 1/self.fps, self.data['scroll_speed'])
+        self.midi_clock.schedule_interval(self.animate, 1/self.fps, self.speed)
         
     def animate(self,dt,scroll_speed):
         for i in range(self.vertex_list_size):
@@ -64,6 +81,7 @@ class MIDIVisualObject(object):
         self.batch = batch
         self.group = group
         self.midi_clock = midi_clock
+        self.animators = []
         self.shape = data['shape']
         self.height = data['height']
         self.width = data['width']
@@ -82,8 +100,8 @@ class MIDIVisualObject(object):
         self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
                                           (self.vertex_format, self.vertices),
                                           (self.color_format , self.v_colors)  )
-        self.on_time = None
-        self.off_time = None
+        self.time_on = None
+        self.time_off = None
         self.x = 0
         self.y = 0        
 
@@ -112,19 +130,29 @@ class MIDIVisualObject(object):
             self.vertex_list.colors[4*i+2] = color_list[2]            
             self.vertex_list.colors[4*i+3] = color_list[3]
             
-    def set_timing(self, on_time, off_time):
-        self.on_time = on_time
-        self.off_time = off_time
+    def set_timing(self, time_on, time_off):
+        self.time_on = time_on
+        self.time_off = time_off
             
     def set_animations(self, animation_list):
         for animation in animation_list:
             if animation['type'] == 'scroll':
-                self.scroller = Scroller(self, animation)
+                self.animators.append(Scroller(self,
+                                               animation['scroll_on_time'],
+                                               animation['scroll_off_time'], 
+                                               animation['scroll_speed'],
+                                               )
+                                      )
             elif animation['type'] == 'highlight':
-                self.highlighter = Highlighter(self, animation)
+                self.animators.append(Highlighter(self, animation['time'], animation['color']))
             elif animation['type'] == 'fade':
-                #fade
-                pass
+                self.animators.append(Fader(self, 
+                                            animation['start_time'], 
+                                            animation['end_time'],
+                                            animation['start_color'],
+                                            animation['end_color'],
+                                            )
+                                      )
             else:
                 raise MIDIObjectException('Unknown animation type',animation['type'])
         
