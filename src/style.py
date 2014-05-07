@@ -7,14 +7,36 @@ Created on May 6, 2014
 import pyglet
 import midi_objects
 
+class StyleException(Exception):
+    pass
+
 class Base_Style(object):
     def __init__(self):
         self.name = None
         self.draw_function = None        
         self.is_scrolling = False
+        self.validated_params = {}        
+        self.valid_param_types = []
+        self.default_params = {}
         
     def validate(self, track):
-        pass
+        given_params = track.style_parameters
+        for param in self.valid_param_types:
+            if param not in given_params.keys():
+                raise StyleException('Missing style parameter', param)
+            if given_params[param] is None:
+                self.validated_params[param] = self.default_params[param]
+            else:
+                self.validated_params[param] = given_params[param]
+            setattr(track, param, self.validated_params[param])
+        track.style_parameters = self.validated_params
+        
+        track.min_screen_region = 20
+        track.max_screen_region = track.parent_song.window_height - 20        
+        if self.is_scrolling: 
+            track.scroll_on_amount  = track.parent_song.window_width/track.speed * (1-track.hit_line_percent)
+            track.scroll_off_amount = track.parent_song.window_width/track.speed * (track.hit_line_percent) 
+                
 
 class No_Style(Base_Style):
     def __init__(self):
@@ -28,55 +50,36 @@ class No_Style(Base_Style):
         '''
         return
 
+
 class Simple(Base_Style):
+    '''
+    Valid Parameters:
+    shape - string
+    speed - float
+    size - float
+    color - color list
+    highlight color - color list
+    hit line percent - float 0<x<1
+    '''
     def __init__(self):
         Base_Style.__init__(self)
         self.name = 'simple'
         self.draw_function = self.simple
         self.is_scrolling = True
-           
-    def none(self, track):
-        '''
-        No objects drawn for this track
-        '''
-        return
-    
-    def validate(self, track):
-        param_dict = track.style_parameters
-        if 'shape' in param_dict.keys():
-            track.shape = param_dict['shape']
-        else:
-            track.shape = 'rectangle'
-        if 'color' in param_dict.keys():
-            track.color = param_dict['color']
-        else:
-            track.color = [255,0,0,255]
-        if 'speed' in param_dict.keys():
-            track.speed = param_dict['speed']
-        else:
-            track.speed = 1
-        if 'size' in param_dict.keys():
-            track.size = param_dict['size']
-        else:
-            track.size = 10
-        if 'highlight_color' in param_dict.keys():
-            track.highlight_color = param_dict['highlight_color']
-        else:
-            track.highlight_color = [255,200,200,255]
-        
-        track.min_screen_region = 20
-        track.max_screen_region = track.parent_song.window_height - 20
-        track.hit_line_percent = 0.5    
-        track.scroll_on_amount  = track.parent_song.window_width/track.speed * (1-track.hit_line_percent)
-        track.scroll_off_amount = track.parent_song.window_width/track.speed * (track.hit_line_percent)                
-        return
+        self.valid_param_types = ['shape','speed','size','color','highlight_color','hit_line_percent']
+        self.default_params = {
+                               'shape':'rectangle',
+                               'color':[255,0,0,255],
+                               'speed':1,
+                               'size':10,
+                               'highlight_color':[255,200,200,255],
+                               'hit_line_percent':0.5,
+                               }   
     
     def simple(self, track):
         '''
         Draw scrolling highlighting shapes
         '''
-        # Do stuff with style parameters
-        # speed, color, highlight color, shape, size 
         global_min_note = track.parent_song.global_min_note
         global_max_note = track.parent_song.global_max_note
         offset = track.parent_song.global_offset
@@ -110,3 +113,44 @@ class Simple(Base_Style):
 style_list = {'none': No_Style(),
               'simple': Simple(),
               }
+
+# class ThickBezier(DrawablePrimitiveObject):
+#     '''
+#     Create Bezier Curve with flat slope at each node
+#     '''
+#     def __init__(self,group,batch,midi_clock,point_list,width=5,color=(255,0,0,255)):
+#         DrawablePrimitiveObject.__init__(self,group,batch,midi_clock)
+#         self.mode = pyglet.gl.GL_TRIANGLE_STRIP
+#         for i in range(len(point_list)-1):
+#             P0 = point_list[i]
+#             P3 = point_list[i+1]
+#             P1 = ((P3[0]+P0[0])/2, P0[1])
+#             P2 = ((P3[0]+P0[0])/2, P3[1])
+#             C0x, C0y =  1*P0[0]                               ,  1*P0[1]
+#             C1x, C1y = -3*P0[0] + 3*P1[0]                     , -3*P0[1] + 3*P1[1]
+#             C2x, C2y =  3*P0[0] - 6*P1[0] + 3*P2[0]           ,  3*P0[1] - 6*P1[1] + 3*P2[1]
+#             C3x, C3y = -1*P0[0] + 3*P1[0] - 3*P2[0] + 1*P3[0] , -1*P0[1] + 3*P1[1] - 3*P2[1] + 1*P3[1]
+#             
+#             Cp0x, Cp0y = -3*P0[0] +  3*P1[0]                     , -3*P0[1] +  3*P1[1]
+#             Cp1x, Cp1y =  6*P0[0] - 12*P1[0] + 6*P2[0]           ,  6*P0[1] - 12*P1[1] + 6*P2[1]
+#             Cp2x, Cp2y = -3*P0[0] +  9*P1[0] - 9*P2[0] + 3*P3[0] , -3*P0[1] +  9*P1[1] - 9*P2[1] + 3*P3[1]
+#             
+#             t = 0
+#             while t <= 1.0:
+#                 Bx  = C0x  + C1x *t + C2x *t**2 + C3x*t**3
+#                 By  = C0y  + C1y *t + C2y *t**2 + C3y*t**3
+#                 Bpx = Cp0x + Cp1x*t + Cp2x*t**2
+#                 Bpy = Cp0y + Cp1y*t + Cp2y*t**2
+#                 
+#                 Bnorm = sqrt(Bpx**2 + Bpy**2)
+#                 Nx =  Bpy / Bnorm
+#                 Ny = -Bpx / Bnorm
+#                 
+#                 vertex_1 = (Bx+width*Nx,By+width*Ny)
+#                 vertex_2 = (Bx-width*Nx,By-width*Ny)
+#                 self.vertices.extend(vertex_1+vertex_2)
+#                 self.count += 2
+#                 
+#                 t += 0.01
+#                 
+#         self.v_colors.extend(color*self.count)
