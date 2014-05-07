@@ -16,6 +16,14 @@ def register_note(t, c, p, v, t1, t2):
 midi_parse.register_note = register_note           
 
 def get_data(main_window):
+    '''
+    Reads data from config file
+    Sets up Song data structure
+    
+    Input: PlaybackWindow (to get window sizes)
+    Output: Song or
+            None if read error occurred
+    '''
     
     # Returns none if data not valid 
     settings_data = config_parse.read_config()
@@ -55,6 +63,16 @@ def get_data(main_window):
     return song
     
 def setup_animation(main_window, song):
+    '''
+    Sets up drawing batch, media player
+    Schedules tempo changes in song
+    Draws background
+    Calls setup_visuals for Song
+    
+    Inputs: PlaybackWindow, Song
+    Outputs: nothing
+    
+    '''
     batch = main_window.main_batch
     media_player = main_window.media_player
     midi_clock = main_window.midi_clock
