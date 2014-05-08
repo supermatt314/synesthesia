@@ -48,15 +48,14 @@ class No_Style(Base_Style):
         '''
         No objects drawn for this track
         '''
-        return
 
 
 class Simple(Base_Style):
     '''
     Valid Parameters:
-    shape - string
-    speed - float
-    size - float
+    shape - string (rectangle, ellipse, diamond)
+    speed - float x>0
+    size - float x>0
     color - color list
     highlight color - color list
     hit line percent - float 0<x<1
@@ -69,10 +68,10 @@ class Simple(Base_Style):
         self.valid_param_types = ['shape','speed','size','color','highlight_color','hit_line_percent']
         self.default_params = {
                                'shape':'rectangle',
-                               'color':[255,0,0,255],
+                               'color':(255,0,0,255),
                                'speed':1,
                                'size':10,
-                               'highlight_color':[255,200,200,255],
+                               'highlight_color':(255,200,200,255),
                                'hit_line_percent':0.5,
                                }   
     
@@ -115,10 +114,89 @@ class Simple(Base_Style):
                               },
                              ]
             current_object.set_animations(animation_data)
-        return
+
+class Simple_Fade(Base_Style):
+    '''
+    Valid Parameters:
+    shape - string (rectangle, ellipse, diamond)
+    speed - float x>0
+    size - float x>0
+    color - color list
+    highlight color - color list
+    hit line percent - float 0<x<1
+    min_fade_time - float x>0
+    max_fade_time - float x>0
+    '''
+    def __init__(self):
+        Base_Style.__init__(self)
+        self.name = 'fade'
+        self.draw_function = self.fade
+        self.is_scrolling = True
+        self.valid_param_types = ['shape',
+                                  'speed',
+                                  'size',
+                                  'color',
+                                  'highlight_color',
+                                  'hit_line_percent',
+                                  'min_fade_time',
+                                  'max_fade_time'
+                                  ]
+        self.default_params = {
+                               'shape':'rectangle',
+                               'color':(255,0,0,255),
+                               'speed':1,
+                               'size':10,
+                               'highlight_color':(255,200,200,255),
+                               'hit_line_percent':0.5,
+                               'min_fade_time':-1,
+                               'max_fade_time':float("inf")
+                               }   
+    
+    def fade(self, track):
+        '''
+        Draw scrolling shapes that fade from the highlight color to the normal color
+        '''
+        global_min_note = track.parent_song.global_min_note
+        global_max_note = track.parent_song.global_max_note
+        offset = track.parent_song.global_offset
+        track.group = pyglet.graphics.OrderedGroup(track.z_order)        
+        for note in track.note_list:
+            width = (note.time_off-note.time_on) * track.speed
+            object_data = {'shape': track.shape,
+                           'height': track.size*note.velocity/100,
+                           'width': width
+                          }
+            current_object = midi_objects.MIDIVisualObject(track.parent_song.batch,
+                                                           track.group,
+                                                           track.parent_song.midi_clock,
+                                                           object_data)
+            x = track.parent_song.window_width
+            y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
+                *(track.max_screen_region-track.min_screen_region) + track.min_screen_region
+            current_object.set_position(x, y)
+            current_object.set_timing(note.time_on+offset, note.time_off+offset)
+            current_object.set_color(track.color)
+            fade_length = max(track.min_fade_time,
+                              min(track.max_fade_time,
+                                  current_object.time_off-current_object.time_on)
+                              )
+            animation_data = [{'type':'scroll',
+                               'scroll_on_time': current_object.time_on - track.scroll_on_amount,
+                               'scroll_off_time': current_object.time_off + track.scroll_off_amount,
+                               'scroll_speed': -track.speed,
+                              },
+                              {'type':'fade',
+                               'start_time': current_object.time_on,
+                               'end_time': current_object.time_on + fade_length,
+                               'start_color': track.highlight_color,
+                               'end_color': track.color,
+                              },
+                             ]
+            current_object.set_animations(animation_data)
 
 style_list = {'none': No_Style(),
               'simple': Simple(),
+              'fade': Simple_Fade(),
               }
 
 # class ThickBezier(DrawablePrimitiveObject):

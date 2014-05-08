@@ -48,7 +48,7 @@ def create_new_config():
                  'midi_file': midi_filename,
                  'mp3_file': mp3_filename,
                  'mp3_delay': 0,
-                 'bg_color': [0,0,0,255]
+                 'bg_color': (0,0,0,255)
                  }
     new_config['song_data'] = song_data
     
@@ -149,5 +149,5 @@ def color_list(value):
         out.append(255)
     #
     # if we got this far, all is well
-    # return the new list
-    return out    
+    # return tuple
+    return tuple(out)    

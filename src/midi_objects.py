@@ -26,21 +26,41 @@ class Fader(Animator):
         g_speed = (end_color[1]-start_color[1])/(end_time-start_time)
         b_speed = (end_color[2]-start_color[2])/(end_time-start_time)
         a_speed = (end_color[3]-start_color[3])/(end_time-start_time)
-        self.fade_speed = [r_speed, g_speed, b_speed, a_speed]
+        self.start_color = start_color
+        self.end_color = end_color
+        self.fade_speed = (r_speed, g_speed, b_speed, a_speed)
+        self.true_color = list(self.start_color)
+        #self.midi_clock.schedule_once(self.highlight, start_time, self.start_color)
         self.midi_clock.schedule_once(self.start_animation, start_time)
+        self.midi_clock.schedule_once(self.stop_animation, end_time)
+        self.midi_clock.schedule_once(self.highlight, end_time, self.end_color) # Ensure return to proper color
         
-        def start_animation(self,dt):
-            self.midi_clock.schedule_interval(self.fade, 1/self.fps, self.fade_speed)
-        
-        def stop_animation(self,dt):
-            self.midi_clock.unschedule(self.fade)
-        
-        def fade(self,dt,fade_speed):
-            for i in range(self.vertex_list_size):
-                self.vertex_list.colors[4*i]   += fade_speed[0] * dt
-                self.vertex_list.colors[4*i+1] += fade_speed[1] * dt
-                self.vertex_list.colors[4*i+2] += fade_speed[2] * dt
-                self.vertex_list.colors[4*i+3] += fade_speed[3] * dt
+    def start_animation(self,dt):
+        self.midi_clock.schedule_interval(self.fade, 1/self.fps)
+    
+    def stop_animation(self,dt):
+        self.midi_clock.unschedule(self.fade)
+    
+    def highlight(self,dt,new_color):
+        for i in range(self.vertex_list_size):
+            self.vertex_list.colors[4*i]   = int(new_color[0])
+            self.vertex_list.colors[4*i+1] = int(new_color[1])
+            self.vertex_list.colors[4*i+2] = int(new_color[2])            
+            self.vertex_list.colors[4*i+3] = int(new_color[3])        
+    
+    def fade(self,dt):
+        # Calculate "true" color separately
+        # Prevents rounding errors due to necessary int conversion
+        self.true_color[0] += self.fade_speed[0] * dt
+        self.true_color[1] += self.fade_speed[1] * dt
+        self.true_color[2] += self.fade_speed[2] * dt
+        self.true_color[3] += self.fade_speed[3] * dt
+        #print(self, self.true_color)
+        for i in range(self.vertex_list_size):
+            self.vertex_list.colors[4*i]   = int(self.true_color[0])
+            self.vertex_list.colors[4*i+1] = int(self.true_color[1])
+            self.vertex_list.colors[4*i+2] = int(self.true_color[2])
+            self.vertex_list.colors[4*i+3] = int(self.true_color[3])
 
 class Highlighter(Animator):
     # Changes object color at specified time    
@@ -123,7 +143,7 @@ class MIDIVisualObject(object):
         If Alpha is not given, default to max opacity 255
         '''
         if len(color_list) == 3:
-            color_list[3] = 255
+            color_list = (color_list[0], color_list[1], color_list[2], 255)
         for i in range(self.vertex_list.get_size()):
             self.vertex_list.colors[4*i]   = color_list[0]
             self.vertex_list.colors[4*i+1] = color_list[1]
