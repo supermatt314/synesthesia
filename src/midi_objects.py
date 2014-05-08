@@ -6,6 +6,7 @@ Created on Jul 6, 2013
 
 import math
 import pyglet
+import shapes
 import style
 
 class MIDIObjectException(Exception):
@@ -102,18 +103,19 @@ class MIDIVisualObject(object):
         self.group = group
         self.midi_clock = midi_clock
         self.animators = []
-        self.shape = data['shape']
-        self.height = data['height']
-        self.width = data['width']
         self.vertex_format = 'v2f'
         self.color_format = 'c4B'
         self.mode = pyglet.gl.GL_TRIANGLES #default mode
+        
+        self.shape = data['shape']
+        self.height = data['height']
+        self.width = data['width']
         if self.shape == 'rectangle':
-            self._make_rectangle()
+            shapes.rectangle(self, self.height, self.width)
         elif self.shape == 'ellipse':
-            self._make_ellipse()
+            shapes.ellipse(self, self.height, self.width)
         elif self.shape == 'diamond':
-            self._make_diamond()
+            shapes.diamond(self, self.height, self.width)
         else:
             raise MIDIObjectException('Unknown MIDI shape:',self.shape)
 
@@ -125,17 +127,37 @@ class MIDIVisualObject(object):
         self.x = 0
         self.y = 0        
 
-    def set_position(self, x, y):
+    def set_position(self, x, y, relative='center'):
         '''
         Sets position of MIDI object at coordinates (x,y)
-        Position is relative to center of left edge of bounding box
-        of object
+        Position is relative to center of object by default
+        Valid positions are:
+        top_left, top_center, top_right
+        left_center, center, right_center
+        bottom_left, bottom_center, bottom_right
         '''
         self.x = x
         self.y = y
+        if relative in ('top_left','top_center','top_right'):
+            y_adjust = -self.height/2
+        elif relative in ('left_center','center','right_center'):
+            y_adjust = 0
+        elif relative in ('bottom_left','bottom_center','bottom_right'):
+            y_adjust = self.height/2
+        else:
+            raise MIDIObjectException('Unknown relative position',relative)
+        if relative in ('top_left','left_center','bottom_left'):
+            x_adjust = self.width/2
+        elif relative in ('top_center','center','top_center'):
+            x_adjust = 0
+        elif relative in ('top_right','right_center','bottom_right'):
+            x_adjust = -self.width/2
+        else:
+            raise MIDIObjectException('Unknown relative position',relative)
+        
         for i in range(self.vertex_list.get_size()):
-            self.vertex_list.vertices[2*i]   = x + self.vertices[2*i]
-            self.vertex_list.vertices[2*i+1] = y + self.vertices[2*i+1]
+            self.vertex_list.vertices[2*i]   = x + self.vertices[2*i] + x_adjust
+            self.vertex_list.vertices[2*i+1] = y + self.vertices[2*i+1] + y_adjust
     
     def set_color(self, color_list):
         '''
@@ -176,48 +198,6 @@ class MIDIVisualObject(object):
             else:
                 raise MIDIObjectException('Unknown animation type',animation['type'])
         
-    def _make_rectangle(self):
-        h = self.height
-        w = self.width
-        v1 = (0,-h/2)
-        v2 = (0, h/2)
-        v3 = (w,-h/2)
-        v4 = (w, h/2)
-        
-        self.vertices = v1+v2+v3+v4
-        self.v_count = 4
-        self.v_colors = [255,0,0,255]*self.v_count #default color        
-        self.v_index = [0,1,2,1,2,3]    
-
-    def _make_ellipse(self):
-        b = self.height/2
-        a = self.width/2
-        n = 20 # number of outer points
-        self.v_count = n+1
-        self.v_colors = [255,0,0,255]*self.v_count        
-        self.vertices = [a,0]
-        for i in range(n): # top half of ellipse
-            x = a*math.cos(2*math.pi/n*i)
-            y = b*math.sin(2*math.pi/n*i)
-            self.vertices.extend([x+a,y])
-        self.v_index = []
-        for i in range(1,n):
-            self.v_index.extend([0,i,i+1])
-        self.v_index.extend([0,n,1])
-        
-    def _make_diamond(self):
-        h = self.height
-        w = self.width
-        v1 = (0,0)
-        v2 = (w/2,h/2)
-        v3 = (w/2,-h/2)
-        v4 = (w,0)
-        
-        self.vertices = v1+v2+v3+v4
-        self.v_count = 4
-        self.v_colors = [255,0,0,255]*self.v_count #default color        
-        self.v_index = [0,1,2,1,2,3]
-
 '''------------------------------------------------------'''
 
 class Song(object):

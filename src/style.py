@@ -70,7 +70,7 @@ class Simple(Base_Style):
                                'shape':'rectangle',
                                'color':(255,0,0,255),
                                'speed':1,
-                               'size':10,
+                               'size':14,
                                'highlight_color':(255,200,200,255),
                                'hit_line_percent':0.5,
                                }   
@@ -96,7 +96,7 @@ class Simple(Base_Style):
             x = track.parent_song.window_width
             y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
                 *(track.max_screen_region-track.min_screen_region) + track.min_screen_region
-            current_object.set_position(x, y)
+            current_object.set_position(x, y, relative='left_center')
             current_object.set_timing(note.time_on+offset, note.time_off+offset)
             current_object.set_color(track.color)
             animation_data = [{'type':'scroll',
@@ -145,7 +145,7 @@ class Simple_Fade(Base_Style):
                                'shape':'rectangle',
                                'color':(255,0,0,255),
                                'speed':1,
-                               'size':10,
+                               'size':14,
                                'highlight_color':(255,200,200,255),
                                'hit_line_percent':0.5,
                                'min_fade_time':-1,
@@ -173,7 +173,7 @@ class Simple_Fade(Base_Style):
             x = track.parent_song.window_width
             y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
                 *(track.max_screen_region-track.min_screen_region) + track.min_screen_region
-            current_object.set_position(x, y)
+            current_object.set_position(x, y, relative='left_center')
             current_object.set_timing(note.time_on+offset, note.time_off+offset)
             current_object.set_color(track.color)
             fade_length = max(track.min_fade_time,
