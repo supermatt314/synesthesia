@@ -27,14 +27,14 @@ def rectangle(midi_obj, h, w):
 def ellipse(midi_obj, h, w):
     b = h/2
     a = w/2
-    n = 20 # number of outer points
+    n = 30 # number of outer points
     midi_obj.v_count = n+1
     midi_obj.v_colors = [255,0,0,255]*midi_obj.v_count        
     midi_obj.vertices = [a,0]
-    for i in range(n): # top half of ellipse
+    for i in range(n):
         x = a*math.cos(2*math.pi/n*i)
         y = b*math.sin(2*math.pi/n*i)
-        midi_obj.vertices.extend([x+a,y])
+        midi_obj.vertices.extend([x,y])
     midi_obj.v_index = []
     for i in range(1,n):
         midi_obj.v_index.extend([0,i,i+1])
