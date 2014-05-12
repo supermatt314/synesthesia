@@ -21,7 +21,7 @@ class Animator(object):
         
 class Fader(Animator):
     # Gradually changes color over time
-    def __init__(self,midi_object,start_time,end_time,start_color,end_color):
+    def __init__(self,midi_object,start_time,end_time,start_color,end_color,cancelling=False):
         Animator.__init__(self,midi_object)
         r_speed = (end_color[0]-start_color[0])/(end_time-start_time)
         g_speed = (end_color[1]-start_color[1])/(end_time-start_time)
@@ -31,7 +31,8 @@ class Fader(Animator):
         self.end_color = end_color
         self.fade_speed = (r_speed, g_speed, b_speed, a_speed)
         self.true_color = list(self.start_color)
-        #self.midi_clock.schedule_once(self.highlight, start_time, self.start_color)
+        if cancelling: # Cancel previous existing fade before starting new one
+            self.midi_clock.schedule_once(self.stop_animation, start_time)
         self.midi_clock.schedule_once(self.start_animation, start_time)
         self.midi_clock.schedule_once(self.stop_animation, end_time)
         self.midi_clock.schedule_once(self.highlight, end_time, self.end_color) # Ensure return to proper color
