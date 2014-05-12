@@ -16,7 +16,7 @@ class Base_Style(object):
         self.draw_function = None        
         self.is_scrolling = False
         self.validated_params = {}        
-        self.valid_param_types = []
+        self.valid_param_types = ()
         self.default_params = {}
         
     def validate(self, track):
@@ -65,7 +65,7 @@ class Simple(Base_Style):
         self.name = 'simple'
         self.draw_function = self.simple
         self.is_scrolling = True
-        self.valid_param_types = ['shape','speed','size','color','highlight_color','hit_line_percent']
+        self.valid_param_types = ('shape','speed','size','color','highlight_color','hit_line_percent')
         self.default_params = {
                                'shape':'rectangle',
                                'color':(255,0,0,255),
@@ -132,7 +132,7 @@ class Simple_Fade(Base_Style):
         self.name = 'fade'
         self.draw_function = self.fade
         self.is_scrolling = True
-        self.valid_param_types = ['shape',
+        self.valid_param_types = ('shape',
                                   'speed',
                                   'size',
                                   'color',
@@ -140,7 +140,7 @@ class Simple_Fade(Base_Style):
                                   'hit_line_percent',
                                   'min_fade_time',
                                   'max_fade_time'
-                                  ]
+                                  )
         self.default_params = {
                                'shape':'rectangle',
                                'color':(255,0,0,255),
@@ -198,6 +198,12 @@ style_list = {'none': No_Style(),
               'simple': Simple(),
               'fade': Simple_Fade(),
               }
+
+def get_style(style_key):
+    if style_key in style_list.keys():
+        return style_list[style_key]
+    else:
+        raise StyleException('Style not found:', style_key)
 
 # class ThickBezier(DrawablePrimitiveObject):
 #     '''

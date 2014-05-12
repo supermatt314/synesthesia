@@ -240,11 +240,9 @@ class Song(object):
         
     def set_global_offset(self):
         for track in self.track_list:
-            if track.style in style.style_list.keys():
-                if style.style_list[track.style].is_scrolling:
-                    self.global_offset = max(track.scroll_on_amount,self.global_offset)
-            else:
-                raise MIDIObjectException('Style {} not found'.format(track.style))
+            style_type = style.get_style(track.style)
+            if style_type.is_scrolling:
+                self.global_offset = max(track.scroll_on_amount,self.global_offset)
     
     def set_midi_file(self, midi_file):
         self.midi_file = midi_file
@@ -266,10 +264,8 @@ class Song(object):
         self.batch = batch
         self.midi_clock = midi_clock
         for track in self.track_list:
-            if track.style in style.style_list.keys():
-                style.style_list[track.style].draw_function(track)
-            else:
-                raise MIDIObjectException('Style {} not found'.format(track.style))
+            style_type = style.get_style(track.style)
+            style_type.draw_function(track)
         
     def get_track_by_index(self, index):
         for track in self.track_list:
@@ -315,10 +311,8 @@ class Track(object):
         self.z_order = u['z_order']
         self.style = u['style']
         self.style_parameters = u['style_parameters']
-        if self.style in style.style_list.keys():
-            style.style_list[self.style].validate(self)
-        else:
-            raise MIDIObjectException('Style not found:',self.style)
+        style_type = style.get_style(self.style)
+        style_type.validate(self)
 
 class Note(object):
     '''
