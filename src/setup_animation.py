@@ -37,6 +37,9 @@ def get_data(main_window):
     song.set_mp3_delay(settings_data['song_data']['mp3_delay'])
     song.set_window_dimensions(main_window)
     song.set_background_color(settings_data['song_data']['bg_color'])
+    
+    for region in settings_data['visual_region_data'].values():
+        song.register_visual_region(region)
 
     global note_list
     note_list = []
@@ -57,9 +60,13 @@ def get_data(main_window):
     for track in song.track_list:
         for user_data in settings_data['track_data'].values():
             if user_data['index'] == track.index:
-                track.set_user_data(user_data)    
+                track.set_user_data(user_data)
+    
+    for region in song.visual_region_list:
+        region.set_note_bounds()
+            
     song.set_global_offset()
-    song.set_global_note_bounds()
+    song.optimize_z_order()
     return song
     
 def setup_animation(main_window, song):

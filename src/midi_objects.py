@@ -206,6 +206,7 @@ class Song(object):
     Data object for entire song
     '''
     def __init__(self):
+        self.visual_region_list = []
         self.track_list = []
         self.tempo_list = []
         self.global_min_note = 128
@@ -217,6 +218,10 @@ class Song(object):
         self.window_width = 0
         self.window_height = 0
         self.unk_track_index = 0
+        
+    def register_visual_region(self,region_data):
+        new_region = Visual_Region(self,region_data)
+        self.visual_region_list.append(new_region)
         
     def register_track(self,track_data):
         new_track = Track(self,track_data)
@@ -266,6 +271,13 @@ class Song(object):
         for track in self.track_list:
             style_type = style.get_style(track.style)
             style_type.draw_function(track)
+            
+    def get_region_by_name(self, name):
+        for region in self.visual_region_list:
+            if region.name == name:
+                return region
+        else:
+            raise MIDIObjectException('No visual region found with name:', name)
         
     def get_track_by_index(self, index):
         for track in self.track_list:
@@ -274,12 +286,61 @@ class Song(object):
         else:
             raise MIDIObjectException('No track found with index:', index)
         
+            
+    def optimize_z_order(self):
+        '''
+        Reduce the number of pyglet ordered groups to
+        minimum needed to optimize performance
+        
+        Assumes visual regions don't overlap
+        '''
+        new_track_list = []
+        for region in self.visual_region_list:
+            for track in region.track_list:
+                # Collapse all undrawn tracks into bottom group
+                if track.style == 'none':
+                    track.z_order = 0
+                else:
+                    new_track_list.append(track)
+            new_track_list_ordered = sorted(new_track_list, key=lambda k: k.z_order)
+            for track in enumerate(new_track_list_ordered, start=1):
+                track[1].z_order = track[0]
+        
+        
+class Visual_Region(object):
+    '''
+    Visual regions are regions on the screen in which
+    groups of tracks will be displayed. Properties of tracks
+    that are interrelated (global min and max notes) are
+    independent for each region.
+    '''
+    def __init__(self,parent,region_data):
+        self.name = region_data['name']
+        self.parent_song = parent
+        self.track_list = []
+        self.left = region_data['left']
+        self.right = region_data['right']
+        self.up = region_data['up']
+        self.down = region_data['down']
+        self.max_note = -1
+        self.min_note = 128
+        
+    def register_track(self,track):
+        self.track_list.append(track)
+        
+    def set_note_bounds(self):
+        for track in self.track_list:
+            self.max_note = max(track.max_note,self.max_note)
+            self.min_note = min(track.min_note,self.min_note)
+        
+        
 class Track(object):
     '''
     Data object for track
     '''
     def __init__(self,parent,track_data):
         self.parent_song = parent
+        self.parent_region = None
         self.index = track_data.index
         self.note_list = []
         self.volume_list = []
@@ -308,6 +369,8 @@ class Track(object):
         Sets the user data for a track
         User data follows structure of default_config.ini
         '''
+        self.parent_region = self.parent_song.get_region_by_name(u['region'])
+        self.parent_region.register_track(self)
         self.z_order = u['z_order']
         self.style = u['style']
         self.style_parameters = u['style_parameters']
@@ -322,7 +385,7 @@ class Note(object):
         self.parent_track = track
         self.track_index = note_data['track_no']
         if self.parent_track.index != self.track_index:
-            raise MIDIObjectException('track number mismatch')
+            raise MIDIObjectException('Track number mismatch')
                 
         self.channel = note_data['channel']
         self.pitch = note_data['pitch']

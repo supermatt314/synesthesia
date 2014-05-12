@@ -31,8 +31,8 @@ class Base_Style(object):
             setattr(track, param, self.validated_params[param])
         track.style_parameters = self.validated_params
         
-        track.min_screen_region = 20
-        track.max_screen_region = track.parent_song.window_height - 20        
+        track.min_screen_region = track.parent_region.down * track.parent_song.window_height
+        track.max_screen_region = track.parent_region.up   * track.parent_song.window_height
         if self.is_scrolling: 
             track.scroll_on_amount  = track.parent_song.window_width/track.speed * (1-track.hit_line_percent)
             track.scroll_off_amount = track.parent_song.window_width/track.speed * (track.hit_line_percent) 
@@ -79,8 +79,8 @@ class Simple(Base_Style):
         '''
         Draw scrolling highlighting shapes
         '''
-        global_min_note = track.parent_song.global_min_note
-        global_max_note = track.parent_song.global_max_note
+        global_min_note = track.parent_region.min_note
+        global_max_note = track.parent_region.max_note
         offset = track.parent_song.global_offset
         track.group = pyglet.graphics.OrderedGroup(track.z_order)        
         for note in track.note_list:
@@ -156,8 +156,8 @@ class Simple_Fade(Base_Style):
         '''
         Draw scrolling shapes that fade from the highlight color to the normal color
         '''
-        global_min_note = track.parent_song.global_min_note
-        global_max_note = track.parent_song.global_max_note
+        global_min_note = track.parent_region.min_note
+        global_max_note = track.parent_region.max_note
         offset = track.parent_song.global_offset
         track.group = pyglet.graphics.OrderedGroup(track.z_order)        
         for note in track.note_list:
