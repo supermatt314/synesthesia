@@ -52,15 +52,17 @@ def create_new_config():
                  }
     new_config['song_data'] = song_data
     
-    visual_region_data = {
-                          'name': 'default',
-                          'left': 0,
-                          'right': 1,
-                          'up': 1,
-                          'down': 0,
+    visual_region_data = {'default':
+                            {
+                             'name': 'default',
+                             'left': 0,
+                             'right': 1,
+                             'up': 1,
+                             'down': 0,
+                             },
                           }
     
-    new_config['visual_region_data']['default'] = visual_region_data
+    new_config['visual_region_data'] = visual_region_data
         
     track_data = {}
     midifile = midi_parse.MidiFile()
@@ -81,7 +83,7 @@ def create_new_config():
             extra_name_index += 1
         track_data[name] = {'index':t.index,
                             'z_order':t.index,
-                            'visual_region':'default',
+                            'region':'default',
                             'style':'simple',
                             'style_parameters':{
                                               'color':(255,0,0,255),
