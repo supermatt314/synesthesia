@@ -82,7 +82,7 @@ class DelayStartPlayer(pyglet.media.Player):
         self.play()
         
     def set_delay(self,delay):
-        self.delay = delay
+        self.delay = max(delay,0)
         
     def set_music(self,music):
         self.music_path = music

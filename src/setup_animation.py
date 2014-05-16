@@ -64,9 +64,15 @@ def get_data(main_window):
     
     for region in song.visual_region_list:
         region.set_note_bounds()
-            
-    song.set_global_offset()
+    
+    if song.mp3_delay < 0:
+        mp3_delay_amount = abs(song.mp3_delay)
+    else:
+        mp3_delay_amount = None
+    song.set_global_offset(delay_amount=mp3_delay_amount)
+    
     song.optimize_z_order()
+    print('Done getting data')
     return song
     
 def setup_animation(main_window, song):

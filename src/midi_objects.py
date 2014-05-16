@@ -211,7 +211,7 @@ class Song(object):
         self.tempo_list = []
         self.global_min_note = 128
         self.global_max_note = -1
-        self.global_offset = 0
+        self.global_offset = 1 # offset minimum of 1 to prevent bug with static style objects
         self.midi_file = None
         self.mp3_file = None
         self.mp3_delay = 0
@@ -230,10 +230,10 @@ class Song(object):
     def register_tempo(self,time,data):
         new_tempo = Tempo(self,time,data)
         self.tempo_list.append(new_tempo)
-        sorted(self.tempo_list, key=lambda k: k.midi_tick)
         for tempo in self.tempo_list:
             tempo.is_first = False
-        self.tempo_list[0].is_first = True
+        first_tempo = min(self.tempo_list, key=lambda k: k.midi_tick)            
+        first_tempo.is_first = True
         
     def set_background_color(self,bg_color):
         self.bg_color = bg_color
@@ -246,21 +246,21 @@ class Song(object):
             self.global_max_note = max(track.max_note,self.global_max_note)
             self.global_min_note = min(track.min_note,self.global_min_note)
         
-    def set_global_offset(self):
+    def set_global_offset(self, delay_amount=None):
         for track in self.track_list:
             style_type = style.get_style(track.style)
             if style_type.is_scrolling:
                 track_offset = max((track.scroll_on_amount - track.get_first_note_time()),0)
                 self.global_offset = max(track_offset,self.global_offset)
+        if delay_amount:
+            tempo = self.get_first_tempo()
+            self.global_offset += delay_amount*96*tempo.tempo/60 #assume tpqn = 96  
     
     def set_midi_file(self, midi_file):
         self.midi_file = midi_file
         
     def set_mp3_delay(self,delay):
-        if delay < 0:
-            raise MIDIObjectException('MP3 delay less than zero')
-        else:
-            self.mp3_delay = delay        
+        self.mp3_delay = delay        
         
     def set_mp3_file(self, mp3_file):
         self.mp3_file = mp3_file
@@ -290,6 +290,13 @@ class Song(object):
                 return track
         else:
             raise MIDIObjectException('No track found with index:', index)
+        
+    def get_first_tempo(self):
+        for tempo in self.tempo_list:
+            if tempo.is_first:
+                return tempo
+        else:
+            raise MIDIObjectException('No first tempo marked')
         
             
     def optimize_z_order(self):
