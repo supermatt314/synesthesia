@@ -269,6 +269,7 @@ class Song(object):
         self.batch = batch
         self.midi_clock = midi_clock
         for track in self.track_list:
+            track.group = pyglet.graphics.OrderedGroup(track.z_order)
             style_type = style.get_style(track.style)
             style_type.draw_function(track)
             

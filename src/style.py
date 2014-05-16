@@ -81,8 +81,7 @@ class Simple(Base_Style):
         '''
         global_min_note = track.parent_region.min_note
         global_max_note = track.parent_region.max_note
-        offset = track.parent_song.global_offset
-        track.group = pyglet.graphics.OrderedGroup(track.z_order)        
+        offset = track.parent_song.global_offset    
         for note in track.note_list:
             width = (note.time_off-note.time_on) * track.speed
             object_data = {'shape': track.shape,
@@ -159,7 +158,6 @@ class Simple_Fade(Base_Style):
         global_min_note = track.parent_region.min_note
         global_max_note = track.parent_region.max_note
         offset = track.parent_song.global_offset
-        track.group = pyglet.graphics.OrderedGroup(track.z_order)        
         for note in track.note_list:
             width = (note.time_off-note.time_on) * track.speed
             object_data = {'shape': track.shape,
@@ -194,16 +192,26 @@ class Simple_Fade(Base_Style):
                              ]
             current_object.set_animations(animation_data)
 
+class Simple_Static(Base_Style):
+    '''
+    Valid Parameters:
+    shape - string (rectangle, ellipse, diamond)
+    color - color list
+    highlight color - color list
+    '''    
+
 style_list = {'none': No_Style(),
               'simple': Simple(),
               'fade': Simple_Fade(),
+              'static': Simple_Static(),
               }
 
 def get_style(style_key):
-    if style_key in style_list.keys():
-        return style_list[style_key]
-    else:
+    style_object = style_list.get(style_key)
+    if style_object is None:
         raise StyleException('Style not found:', style_key)
+    else:
+        return style_object
 
 # class ThickBezier(DrawablePrimitiveObject):
 #     '''
