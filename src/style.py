@@ -29,9 +29,10 @@ class Base_Style(object):
                 self.validated_params[param] = given_params[param]
             setattr(track, param, self.validated_params[param])
         track.style_parameters = self.validated_params
-        
-        track.min_screen_region = track.parent_region.down * track.parent_song.window_height
-        track.max_screen_region = track.parent_region.up   * track.parent_song.window_height
+        track.bottom_edge = track.parent_region.down * track.parent_song.window_height
+        track.top_edge = track.parent_region.up   * track.parent_song.window_height
+        track.left_edge = track.parent_region.left * track.parent_song.window_width
+        track.right_edge = track.parent_region.right * track.parent_song.window_width
         if self.is_scrolling: 
             track.scroll_on_amount  = track.parent_song.window_width/track.speed * (1-track.hit_line_percent)
             track.scroll_off_amount = track.parent_song.window_width/track.speed * (track.hit_line_percent) 
@@ -93,7 +94,7 @@ class Simple(Base_Style):
                                                            object_data)
             x = track.parent_song.window_width
             y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
-                *(track.max_screen_region-track.min_screen_region) + track.min_screen_region
+                *(track.top_edge-track.bottom_edge) + track.bottom_edge
             current_object.set_position(x, y, relative='left_center')
             current_object.set_timing(note.time_on+offset, note.time_off+offset)
             current_object.set_color(track.color)
@@ -169,7 +170,7 @@ class Simple_Fade(Base_Style):
                                                            object_data)
             x = track.parent_song.window_width
             y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
-                *(track.max_screen_region-track.min_screen_region) + track.min_screen_region
+                *(track.top_edge-track.bottom_edge) + track.bottom_edge
             current_object.set_position(x, y, relative='left_center')
             current_object.set_timing(note.time_on+offset, note.time_off+offset)
             current_object.set_color(track.color)
@@ -179,7 +180,7 @@ class Simple_Fade(Base_Style):
                               )
             animation_data = [{'type':'scroll',
                                'scroll_on_time': current_object.time_on - track.scroll_on_amount,
-                               'scroll_off_time': current_object.time_off + track.scroll_off_amount,
+                               'scroll_off_time': current_object.time_off + track.scroll_off_amount + 50,
                                'scroll_speed': -track.speed,
                               },
                               {'type':'fade',
@@ -197,8 +198,62 @@ class Simple_Static(Base_Style):
     shape - string (rectangle, ellipse, diamond)
     color - color list
     highlight color - color list
+    height - float
+    width - float
     '''
-    pass
+    def __init__(self):
+        Base_Style.__init__(self)
+        self.name = 'static'
+        self.draw_function = self.static
+        self.is_scrolling = False
+        self.valid_param_types = ('shape',
+                                  'color',
+                                  'highlight_color',
+                                  'height',                                  
+                                  'width',
+                                  )
+        self.default_params = {
+                               'shape':'rectangle',
+                               'color':(255,0,0,0),
+                               'highlight_color':(255,0,0,255),
+                               'height':14,
+                               'width':14,
+                               }
+        
+    def static(self, track):
+        global_min_note = track.parent_region.min_note
+        global_max_note = track.parent_region.max_note
+        offset = track.parent_song.global_offset
+        object_data = {'shape': track.shape,
+                       'height': track.height,
+                       'width': track.width,
+                      }        
+        for pitch in range(global_min_note,global_max_note+1):
+            # draw note
+            current_object = midi_objects.MIDIVisualObject(track.parent_song.batch,
+                                                           track.group,
+                                                           track.parent_song.midi_clock,
+                                                           object_data)
+            x = (track.right_edge - track.left_edge)/2 + track.left_edge
+            y = (pitch - global_min_note)/(global_max_note - global_min_note) \
+                *(track.top_edge-track.bottom_edge) + track.bottom_edge
+            current_object.set_position(x, y, relative='center')
+            current_object.set_color(track.color)
+            
+            animation_data = []
+            notes_this_pitch = [note for note in track.note_list if note.pitch == pitch]
+            for note in notes_this_pitch:
+                data_1 = {'type':'highlight',
+                          'time':note.time_on+offset,
+                          'color':track.highlight_color,
+                          }
+                data_2 = {'type':'highlight',
+                          'time':note.time_off+offset,
+                          'color':track.color,
+                          }
+                animation_data.append(data_1)
+                animation_data.append(data_2)
+            current_object.set_animations(animation_data)                
 
 style_list = {'none': No_Style(),
               'simple': Simple(),
