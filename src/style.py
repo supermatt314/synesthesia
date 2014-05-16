@@ -4,7 +4,6 @@ Created on May 6, 2014
 @author: Matt
 '''
 
-import pyglet
 import midi_objects
 
 class StyleException(Exception):
@@ -198,7 +197,8 @@ class Simple_Static(Base_Style):
     shape - string (rectangle, ellipse, diamond)
     color - color list
     highlight color - color list
-    '''    
+    '''
+    pass
 
 style_list = {'none': No_Style(),
               'simple': Simple(),
