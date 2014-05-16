@@ -239,6 +239,9 @@ class Song(object):
         self.bg_color = bg_color
         
     def set_global_note_bounds(self):
+        '''
+        deprecated?
+        '''
         for track in self.track_list:
             self.global_max_note = max(track.max_note,self.global_max_note)
             self.global_min_note = min(track.min_note,self.global_min_note)
@@ -247,7 +250,8 @@ class Song(object):
         for track in self.track_list:
             style_type = style.get_style(track.style)
             if style_type.is_scrolling:
-                self.global_offset = max(track.scroll_on_amount,self.global_offset)
+                track_offset = max((track.scroll_on_amount - track.get_first_note_time()),0)
+                self.global_offset = max(track_offset,self.global_offset)
     
     def set_midi_file(self, midi_file):
         self.midi_file = midi_file
@@ -377,6 +381,10 @@ class Track(object):
         self.style_parameters = u['style_parameters']
         style_type = style.get_style(self.style)
         style_type.validate(self)
+        
+    def get_first_note_time(self):
+        min_note = min(self.note_list,key=lambda note: note.time_on)
+        return min_note.time_on
 
 class Note(object):
     '''
