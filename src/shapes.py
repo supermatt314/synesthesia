@@ -6,8 +6,8 @@ Created on May 8, 2014
 Contains functions to generate shapes of midi objects
 
 Inputs: MIDIVisualObject
-        'height' - string
-        'width' - string
+        'height' - float
+        'width' - float
 Outputs: none
 '''
 
@@ -30,7 +30,7 @@ def ellipse(midi_obj, h, w):
     n = 30 # number of outer points
     midi_obj.v_count = n+1
     midi_obj.v_colors = [255,0,0,255]*midi_obj.v_count        
-    midi_obj.vertices = [a,0]
+    midi_obj.vertices = [0,0]
     for i in range(n):
         x = a*math.cos(2*math.pi/n*i)
         y = b*math.sin(2*math.pi/n*i)
@@ -50,3 +50,19 @@ def diamond(midi_obj, h, w):
     midi_obj.v_count = 4
     midi_obj.v_colors = [255,0,0,255]*midi_obj.v_count #default color        
     midi_obj.v_index = [0,1,2,1,2,3]
+    
+def star(midi_obj, h, w):
+    b = h/2
+    a = w/2
+    n = 30 # number of outer points
+    midi_obj.v_count = n+1
+    midi_obj.v_colors = [255,0,0,255]*midi_obj.v_count        
+    midi_obj.vertices = [0,0]
+    for i in range(n):
+        x = a*math.cos(2*math.pi/n*i)**3
+        y = b*math.sin(2*math.pi/n*i)**3
+        midi_obj.vertices.extend([x,y])
+    midi_obj.v_index = []
+    for i in range(1,n):
+        midi_obj.v_index.extend([0,i,i+1])
+    midi_obj.v_index.extend([0,n,1])
