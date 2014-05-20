@@ -16,7 +16,7 @@ class Animator(object):
     def __init__(self,midi_object):
         self.midi_clock = midi_object.midi_clock
         self.vertex_list = midi_object.vertex_list
-        self.vertex_list_size = self.vertex_list.get_size()        
+        self.vertex_list_size = self.vertex_list.get_size()
         self.fps = 60
         
 class Fader(Animator):
@@ -35,13 +35,13 @@ class Fader(Animator):
             self.midi_clock.schedule_once(self.stop_animation, start_time)
         self.midi_clock.schedule_once(self.start_animation, start_time)
         self.midi_clock.schedule_once(self.stop_animation, end_time)
-        self.midi_clock.schedule_once(self.highlight, end_time, self.end_color) # Ensure return to proper color
         
     def start_animation(self,dt):
-        self.midi_clock.schedule_interval(self.fade, 1/self.fps)
+        self.midi_clock.schedule(self.fade)
     
     def stop_animation(self,dt):
         self.midi_clock.unschedule(self.fade)
+        self.highlight(None, self.end_color) # Ensure return to proper color
     
     def highlight(self,dt,new_color):
         for i in range(self.vertex_list_size):
@@ -87,7 +87,7 @@ class Scroller(Animator):
         self.speed = speed
         
     def start_animation(self,dt):
-        self.midi_clock.schedule_interval(self.animate, 1/self.fps, self.speed)
+        self.midi_clock.schedule(self.animate, self.speed)
         
     def animate(self,dt,scroll_speed):
         for i in range(self.vertex_list_size):
@@ -104,6 +104,7 @@ class MIDIVisualObject(object):
         self.group = group
         self.midi_clock = midi_clock
         self.animators = []
+        self.not_drawn = False
         self.vertex_format = 'v2f'
         self.color_format = 'c4B'
         self.mode = pyglet.gl.GL_TRIANGLES #default mode
@@ -111,18 +112,18 @@ class MIDIVisualObject(object):
         self.shape = data['shape']
         self.height = data['height']
         self.width = data['width']
-        if self.shape == 'rectangle':
-            shapes.rectangle(self, self.height, self.width)
-        elif self.shape == 'ellipse':
-            shapes.ellipse(self, self.height, self.width)
-        elif self.shape == 'diamond':
-            shapes.diamond(self, self.height, self.width)
+        try:
+            shape_fn = getattr(shapes,self.shape)
+        except AttributeError as e:
+            print("Unknown shape:{} Skipping object generation".format(self.shape))
+            self.not_drawn = True
         else:
-            raise MIDIObjectException('Unknown MIDI shape:',self.shape)
+            shape_fn(self, self.height, self.width)
 
-        self.vertex_list = self.batch.add_indexed( self.v_count, self.mode, self.group, self.v_index, 
-                                          (self.vertex_format, self.vertices),
-                                          (self.color_format , self.v_colors)  )
+            self.vertex_list = self.batch.add_indexed(self.v_count, self.mode, self.group, self.v_index, 
+                                                      (self.vertex_format, self.vertices),
+                                                      (self.color_format , self.v_colors) 
+                                                     )
         self.time_on = None
         self.time_off = None
         self.x = 0
@@ -137,6 +138,8 @@ class MIDIVisualObject(object):
         left_center, center, right_center
         bottom_left, bottom_center, bottom_right
         '''
+        if self.not_drawn:
+            return
         self.x = x
         self.y = y
         if relative in ('top_left','top_center','top_right'):
@@ -154,7 +157,7 @@ class MIDIVisualObject(object):
         elif relative in ('top_right','right_center','bottom_right'):
             x_adjust = -self.width/2
         else:
-            raise MIDIObjectException('Unknown relative position',relative)
+            raise MIDIObjectException('Unknown relative position', relative)
         
         for i in range(self.vertex_list.get_size()):
             self.vertex_list.vertices[2*i]   = x + self.vertices[2*i] + x_adjust
@@ -165,6 +168,8 @@ class MIDIVisualObject(object):
         color_list: 3 (RGB) or 4 (RGBA) length list
         If Alpha is not given, default to max opacity 255
         '''
+        if self.not_drawn:
+            return
         if len(color_list) == 3:
             color_list = (color_list[0], color_list[1], color_list[2], 255)
         for i in range(self.vertex_list.get_size()):
@@ -174,10 +179,14 @@ class MIDIVisualObject(object):
             self.vertex_list.colors[4*i+3] = color_list[3]
             
     def set_timing(self, time_on, time_off):
+        if self.not_drawn:
+            return        
         self.time_on = time_on
         self.time_off = time_off
             
     def set_animations(self, animation_list):
+        if self.not_drawn:
+            return
         for animation in animation_list:
             if animation['type'] == 'scroll':
                 self.animators.append(Scroller(self,
