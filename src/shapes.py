@@ -3,7 +3,15 @@ Created on May 8, 2014
 
 @author: Matt
 
-Contains functions to generate shapes of midi objects
+Creates the following attributes for the provided MIDI Visual Object:
+vertices - list of (x,y) vertex coordinates
+           size 2n where n=number of vertices
+v_count  - number of vertices, used by pyglet
+v_colors - list of RGBA colors for each vertex
+           size 4n where n=number of vertices
+v_index  - list where entries are indices to vertices
+           used by pyglet making indexed vertex lists
+           size 3m where m=number of triangles of the object
 
 Inputs: MIDIVisualObject
         'height' - float
