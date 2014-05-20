@@ -14,9 +14,11 @@ class MIDIObjectException(Exception):
 
 class Animator(object):
     def __init__(self,midi_object):
+        self.midi_object = midi_object
         self.midi_clock = midi_object.midi_clock
         self.vertex_list = midi_object.vertex_list
         self.vertex_list_size = self.vertex_list.get_size()
+        self.LAG_THRESHOLD = 3
         self.fps = 60
         
 class Fader(Animator):
@@ -31,12 +33,12 @@ class Fader(Animator):
         self.end_color = end_color
         self.fade_speed = (r_speed, g_speed, b_speed, a_speed)
         self.true_color = list(self.start_color)
-        if cancelling: # Cancel previous existing fade before starting new one
-            self.midi_clock.schedule_once(self.stop_animation, start_time)
+        self.is_cancelling = cancelling
         self.midi_clock.schedule_once(self.start_animation, start_time)
         self.midi_clock.schedule_once(self.stop_animation, end_time)
         
     def start_animation(self,dt):
+        self.stop_animation(dt) # Cancel previous existing fade before starting new one
         self.midi_clock.schedule(self.fade)
     
     def stop_animation(self,dt):
@@ -82,16 +84,24 @@ class Scroller(Animator):
     # Scrolls a vertex list by scroll speed
     def __init__(self,midi_object,start_time,end_time,speed):
         Animator.__init__(self,midi_object)
+        self.start_time = start_time
+        self.end_time = end_time
+        self.speed = speed        
         self.midi_clock.schedule_once(self.start_animation, start_time)
         self.midi_clock.schedule_once(self.stop_animation, end_time+50)
-        self.speed = speed
         
     def start_animation(self,dt):
-        self.midi_clock.schedule(self.animate, self.speed)
+        # If animation start is sufficiently delayed,
+        # manually move vertices to have them "catch up", then start animation
+        if dt - self.start_time > self.LAG_THRESHOLD:
+            for i in range(self.vertex_list_size):
+                self.vertex_list.vertices[2*i] += self.speed * (dt-self.start_time)
+        self.midi_clock.schedule(self.animate)
         
-    def animate(self,dt,scroll_speed):
+        
+    def animate(self,dt):
         for i in range(self.vertex_list_size):
-            self.vertex_list.vertices[2*i] += scroll_speed * dt
+            self.vertex_list.vertices[2*i] += self.speed * dt
             
     def stop_animation(self,dt):
         self.midi_clock.unschedule(self.animate)
