@@ -93,9 +93,9 @@ class Scroller(Animator):
     def start_animation(self,dt):
         # If animation start is sufficiently delayed,
         # manually move vertices to have them "catch up", then start animation
-        if dt - self.start_time > self.LAG_THRESHOLD:
-            for i in range(self.vertex_list_size):
-                self.vertex_list.vertices[2*i] += self.speed * (dt-self.start_time)
+        #if dt - self.start_time > self.LAG_THRESHOLD:
+        for i in range(self.vertex_list_size):
+            self.vertex_list.vertices[2*i] += self.speed * (dt-self.start_time)
         self.midi_clock.schedule(self.animate)
         
         
