@@ -56,6 +56,9 @@ class PlaybackClock(pyglet.clock.Clock):
             self.reference_time = current_time
         self.ticks_per_second = self.tpqn*tempo/60
         
+    def set_tpqn(self,tpqn):
+        self.tpqn = tpqn
+        
 # Media player setup
 class DelayStartPlayer(pyglet.media.Player):
     def __init__(self,delay=0,volume=0.4,music_path=None):
@@ -121,13 +124,13 @@ class PlaybackWindow(pyglet.window.Window):
     def draw_text(self,*args):
         if 'title' in args:
                 self.title_text = pyglet.text.Label("SYNESTHESIA",
-                                                         font_name='Arial',
-                                                         font_size=28,
-                                                         x=self.width/2,
-                                                         y=self.height/2,
-                                                         anchor_x='center',
-                                                         anchor_y='center',
-                                                         batch=self.main_batch)
+                                                     font_name='Arial',
+                                                     font_size=28,
+                                                     x=self.width/2,
+                                                     y=self.height/2,
+                                                     anchor_x='center',
+                                                     anchor_y='center',
+                                                     batch=self.main_batch)
         if self.help_toggle:
             if 'setup_help' in args:
                 self.help_text_setup = pyglet.text.Label('Ctrl+N: Setup New Config File | Ctrl+L: Load Config File |  Esc: Close program | ?: Toggle Help Text',
@@ -140,14 +143,14 @@ class PlaybackWindow(pyglet.window.Window):
                                                          batch=self.main_batch)
             if 'playback_help' in args:
                 self.help_text_playback = pyglet.text.Label('Space: Play/Pause | Backspace: Restart | Esc: Return to Setup Menu | ?: Toggle Help Text',
-                                                 font_name='Arial',
-                                                 font_size=10,
-                                                 x=0,
-                                                 y=0,
-                                                 anchor_x='left',
-                                                 anchor_y='bottom',
-                                                 batch=self.main_batch,
-                                                 group=pyglet.graphics.OrderedGroup(255))
+                                                             font_name='Arial',
+                                                             font_size=10,
+                                                             x=0,
+                                                             y=0,
+                                                             anchor_x='left',
+                                                             anchor_y='bottom',
+                                                             batch=self.main_batch,
+                                                             group=pyglet.graphics.OrderedGroup(255))
     def delete_text(self,*args):
         if 'title' in args:
             self.title_text.delete()

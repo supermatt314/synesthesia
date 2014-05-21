@@ -47,6 +47,9 @@ def get_data(main_window):
     # Reading the midi file will automatically populate 'note_list' via the register_note hook
     midifile.read(settings_data['song_data']['midi_file'])
     
+    if midifile.ticksPerQuarterNote:
+        song.tpqn = midifile.ticksPerQuarterNote
+    
     for t in midifile.tracks:
         song.register_track(t)
         for e in t.events:
@@ -89,6 +92,8 @@ def setup_animation(main_window, song):
     batch = main_window.main_batch
     media_player = main_window.media_player
     midi_clock = main_window.midi_clock
+    
+    main_window.midi_clock.set_tpqn(song.tpqn)
     
     for t in song.tempo_list:
         t.schedule_tempo(midi_clock)     
