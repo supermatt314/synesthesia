@@ -74,3 +74,26 @@ def star(midi_obj, h, w):
     for i in range(1,n):
         midi_obj.v_index.extend([0,i,i+1])
     midi_obj.v_index.extend([0,n,1])
+    
+def hexagon(midi_obj, h, w):
+    if h == w: # hexagon degenerates to diamond if h = w
+        diamond(midi_obj, h, w)
+    elif h < w:
+        v1 = (-w/2,0)
+        v2 = (-w/2+h/2,h/2)
+        v3 = (w/2-h/2,h/2)
+        v4 = (w/2,0)
+        v5 = (w/2-h/2,-h/2)
+        v6 = (-w/2+h/2,-h/2)
+    else: # h > w
+        v1 = (0,h/2)
+        v2 = (w/2,h/2-w/2)
+        v3 = (w/2,-h/2+w/2)
+        v4 = (0,-h/2)
+        v5 = (-w/2,-h/2+w/2)
+        v6 = (-w/2,h/2-w/2)
+    midi_obj.v_count = 6
+    midi_obj.v_colors = [255,0,0,255]*midi_obj.v_count
+    midi_obj.vertices = v1+v2+v3+v4+v5+v6
+    midi_obj.v_index = [0,1,2,0,2,3,0,3,4,0,4,5]
+        
