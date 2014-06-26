@@ -43,7 +43,7 @@ class Fader(Animator):
     
     def stop_animation(self,dt):
         self.midi_clock.unschedule(self.fade)
-        self.highlight(None, self.end_color) # Ensure return to proper color
+        #self.highlight(None, self.end_color) # Ensure return to proper color
     
     def highlight(self,dt,new_color):
         for i in range(self.vertex_list_size):
@@ -60,11 +60,11 @@ class Fader(Animator):
         self.true_color[2] += self.fade_speed[2] * dt
         self.true_color[3] += self.fade_speed[3] * dt
         #print(self, self.true_color)
-        for i in range(self.vertex_list_size):
-            self.vertex_list.colors[4*i]   = int(self.true_color[0])
-            self.vertex_list.colors[4*i+1] = int(self.true_color[1])
-            self.vertex_list.colors[4*i+2] = int(self.true_color[2])
-            self.vertex_list.colors[4*i+3] = int(self.true_color[3])
+        for i in range(self.vertex_list_size): #Ensure colors are not out of bounds (graphics engine does not make this check)
+            self.vertex_list.colors[4*i]   = max(min(int(self.true_color[0]),255),0)
+            self.vertex_list.colors[4*i+1] = max(min(int(self.true_color[1]),255),0)
+            self.vertex_list.colors[4*i+2] = max(min(int(self.true_color[2]),255),0)
+            self.vertex_list.colors[4*i+3] = max(min(int(self.true_color[3]),255),0)
 
 class Highlighter(Animator):
     # Changes object color at specified time    
