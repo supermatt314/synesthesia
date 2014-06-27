@@ -253,12 +253,195 @@ class Simple_Static(Base_Style):
                           }
                 animation_data.append(data_1)
                 animation_data.append(data_2)
-            current_object.set_animations(animation_data)                
+            current_object.set_animations(animation_data)
+            
+class Pulse(Base_Style):
+    '''
+    Valid Parameters:
+    shape - string (rectangle, ellipse, diamond)
+    speed - float x>0
+    size - float x>0
+    color - color list
+    highlight_color - color list
+    pulse_color - color list
+    hit line percent - float 0<x<1
+    pulse_time - float x>0
+    fade_time - float x>0
+    '''
+    def __init__(self):
+        Base_Style.__init__(self)
+        self.name = 'pulse'
+        self.draw_function = self.pulse
+        self.is_scrolling = True
+        self.valid_param_types = ('shape',
+                                  'speed',
+                                  'size',
+                                  'color',
+                                  'highlight_color',
+                                  'pulse_color',
+                                  'hit_line_percent',
+                                  'pulse_time',
+                                  'fade_time'
+                                  )
+        self.default_params = {
+                               'shape':'rectangle',
+                               'color':(255,0,0,255),
+                               'speed':1,
+                               'size':14,
+                               'highlight_color':(255,200,200,255),
+                               'pulse_color':(255,255,255,255),
+                               'hit_line_percent':0.5,
+                               'pulse_time':48,
+                               'fade_time':48
+                               }   
+    
+    def pulse(self, track):
+        '''
+        Draw scrolling shapes that pulse from the highlight color to the pulse color and back down
+        '''
+        global_min_note = track.parent_region.min_note
+        global_max_note = track.parent_region.max_note
+        offset = track.parent_song.global_offset
+        for note in track.note_list:
+            width = (note.time_off-note.time_on) * track.speed
+            object_data = {'shape': track.shape,
+                           'height': track.size*note.velocity/100,
+                           'width': width
+                          }
+            current_object = midi_objects.MIDIVisualObject(track.parent_song.batch,
+                                                           track.group,
+                                                           track.parent_song.midi_clock,
+                                                           object_data)
+            x = track.parent_song.window_width
+            y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
+                *(track.top_edge-track.bottom_edge) + track.bottom_edge
+            current_object.set_position(x, y, relative='left_center')
+            current_object.set_timing(note.time_on+offset, note.time_off+offset)
+            current_object.set_color(track.color)
+            fade_length = track.fade_time
+            pulse_length = min(track.pulse_time,
+                              current_object.time_off-current_object.time_on
+                              )
+            animation_data = [{'type':'scroll',
+                               'scroll_on_time': current_object.time_on - track.scroll_on_amount,
+                               'scroll_off_time': current_object.time_off + track.scroll_off_amount + 50,
+                               'scroll_speed': -track.speed,
+                              },
+                              {'type':'fade',
+                               'start_time': current_object.time_on,
+                               'end_time': current_object.time_on + pulse_length/2,
+                               'start_color': track.color,
+                               'end_color': track.pulse_color,
+                               },
+                              {'type':'fade',
+                               'start_time': current_object.time_on + pulse_length/2,
+                               'end_time': current_object.time_on + pulse_length,
+                               'start_color': track.pulse_color,
+                               'end_color': track.highlight_color,
+                               },                              
+                              {'type':'fade',
+                               'start_time': current_object.time_off,
+                               'end_time': current_object.time_off + fade_length,
+                               'start_color': track.highlight_color,
+                               'end_color': track.color,
+                              },
+                             ]
+            current_object.set_animations(animation_data)                   
+
+class Pulse_Static(Base_Style):
+    '''
+    Valid Parameters:
+    shape - string (rectangle, ellipse, diamond)
+    color - color list
+    highlight color - color list
+    pulse color - color list
+    pulse time - float
+    fade time - float
+    height - float
+    width - float
+    '''
+    def __init__(self):
+        Base_Style.__init__(self)
+        self.name = 'pulse_static'
+        self.draw_function = self.pulse_static
+        self.is_scrolling = False
+        self.valid_param_types = ('shape',
+                                  'color',
+                                  'highlight_color',
+                                  'pulse_color',
+                                  'pulse_time',
+                                  'fade_time',
+                                  'height',                                  
+                                  'width',
+                                  )
+        self.default_params = {
+                               'shape':'rectangle',
+                               'color':(255,0,0,0),
+                               'highlight_color':(255,0,0,255),
+                               'pulse_color':(255,255,255,255),
+                               'pulse_time':48,
+                               'fade_time':48,
+                               'height':14,
+                               'width':14,
+                               }
+        
+    def pulse_static(self, track):
+        global_min_note = track.parent_region.min_note
+        global_max_note = track.parent_region.max_note
+        offset = track.parent_song.global_offset
+        object_data = {'shape': track.shape,
+                       'height': track.height,
+                       'width': track.width,
+                      }        
+        for pitch in range(global_min_note,global_max_note+1):
+            # draw note
+            current_object = midi_objects.MIDIVisualObject(track.parent_song.batch,
+                                                           track.group,
+                                                           track.parent_song.midi_clock,
+                                                           object_data)
+            x = (track.right_edge - track.left_edge)/2 + track.left_edge
+            y = (pitch - global_min_note)/(global_max_note - global_min_note) \
+                *(track.top_edge-track.bottom_edge) + track.bottom_edge
+            current_object.set_position(x, y, relative='center')
+            current_object.set_color(track.color)
+            fade_length = track.fade_time
+            
+            animation_data = []
+            notes_this_pitch = [note for note in track.note_list if note.pitch == pitch]
+            for note in notes_this_pitch:
+                pulse_length = min(track.pulse_time,
+                                   note.time_off-note.time_on
+                                   )                
+                data_1 =  {'type':'fade',
+                           'start_time': note.time_on + offset,
+                           'end_time': note.time_on + pulse_length/2 + offset,
+                           'start_color': track.color,
+                           'end_color': track.pulse_color,
+                           'cancelling': True,
+                           }
+                data_2 =  {'type':'fade',
+                           'start_time': note.time_on + pulse_length/2 + offset,
+                           'end_time': note.time_on + pulse_length + offset,
+                           'start_color': track.pulse_color,
+                           'end_color': track.highlight_color,
+                           }                            
+                data_3 =  {'type':'fade',
+                           'start_time': note.time_off + offset,
+                           'end_time': note.time_off + fade_length + offset,
+                           'start_color': track.highlight_color,
+                           'end_color': track.color,
+                          }
+                animation_data.append(data_1)
+                animation_data.append(data_2)
+                animation_data.append(data_3)
+            current_object.set_animations(animation_data)
 
 style_list = {'none': No_Style(),
               'simple': Simple(),
               'fade': Simple_Fade(),
               'static': Simple_Static(),
+              'pulse': Pulse(),
+              'pulse_static': Pulse_Static(), 
               }
 
 def get_style(style_key):
