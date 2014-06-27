@@ -29,6 +29,7 @@ class Fader(Animator):
         g_speed = (end_color[1]-start_color[1])/(end_time-start_time)
         b_speed = (end_color[2]-start_color[2])/(end_time-start_time)
         a_speed = (end_color[3]-start_color[3])/(end_time-start_time)
+        self.start_time = start_time
         self.start_color = start_color
         self.end_color = end_color
         self.fade_speed = (r_speed, g_speed, b_speed, a_speed)
@@ -38,12 +39,14 @@ class Fader(Animator):
         self.midi_clock.schedule_once(self.stop_animation, end_time)
         
     def start_animation(self,dt):
-        self.stop_animation(dt) # Cancel previous existing fade before starting new one
+        if self.is_cancelling:
+            self.stop_animation(dt) # Cancel previous existing fade before starting new one
+        self.fade(dt-self.start_time) # "De-lag" fade, similar to scroll
         self.midi_clock.schedule(self.fade)
     
     def stop_animation(self,dt):
         self.midi_clock.unschedule(self.fade)
-        #self.highlight(None, self.end_color) # Ensure return to proper color
+        self.highlight(None, self.end_color) # Ensure return to proper color
     
     def highlight(self,dt,new_color):
         for i in range(self.vertex_list_size):
