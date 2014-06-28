@@ -25,6 +25,9 @@ class Fader(Animator):
     # Gradually changes color over time
     def __init__(self,midi_object,start_time,end_time,start_color,end_color,cancelling=False):
         Animator.__init__(self,midi_object)
+        if end_time == start_time:
+            self.midi_clock.schedule_once(self.highlight, start_time, end_color)
+            return
         r_speed = (end_color[0]-start_color[0])/(end_time-start_time)
         g_speed = (end_color[1]-start_color[1])/(end_time-start_time)
         b_speed = (end_color[2]-start_color[2])/(end_time-start_time)
