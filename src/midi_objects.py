@@ -25,10 +25,14 @@ class Fader(Animator):
     # Gradually changes color over time
     def __init__(self,midi_object,start_time,end_time,start_color,end_color,cancelling=False):
         Animator.__init__(self,midi_object)
+        if end_time == start_time:
+            self.midi_clock.schedule_once(self.highlight, start_time, end_color)
+            return
         r_speed = (end_color[0]-start_color[0])/(end_time-start_time)
         g_speed = (end_color[1]-start_color[1])/(end_time-start_time)
         b_speed = (end_color[2]-start_color[2])/(end_time-start_time)
         a_speed = (end_color[3]-start_color[3])/(end_time-start_time)
+        self.start_time = start_time
         self.start_color = start_color
         self.end_color = end_color
         self.fade_speed = (r_speed, g_speed, b_speed, a_speed)
@@ -38,7 +42,9 @@ class Fader(Animator):
         self.midi_clock.schedule_once(self.stop_animation, end_time)
         
     def start_animation(self,dt):
-        self.stop_animation(dt) # Cancel previous existing fade before starting new one
+        if self.is_cancelling:
+            self.stop_animation(dt) # Cancel previous existing fade before starting new one
+        self.fade(dt-self.start_time) # "De-lag" fade, similar to scroll
         self.midi_clock.schedule(self.fade)
     
     def stop_animation(self,dt):
@@ -60,11 +66,11 @@ class Fader(Animator):
         self.true_color[2] += self.fade_speed[2] * dt
         self.true_color[3] += self.fade_speed[3] * dt
         #print(self, self.true_color)
-        for i in range(self.vertex_list_size):
-            self.vertex_list.colors[4*i]   = int(self.true_color[0])
-            self.vertex_list.colors[4*i+1] = int(self.true_color[1])
-            self.vertex_list.colors[4*i+2] = int(self.true_color[2])
-            self.vertex_list.colors[4*i+3] = int(self.true_color[3])
+        for i in range(self.vertex_list_size): #Ensure colors are not out of bounds (graphics engine does not make this check)
+            self.vertex_list.colors[4*i]   = max(min(int(self.true_color[0]),255),0)
+            self.vertex_list.colors[4*i+1] = max(min(int(self.true_color[1]),255),0)
+            self.vertex_list.colors[4*i+2] = max(min(int(self.true_color[2]),255),0)
+            self.vertex_list.colors[4*i+3] = max(min(int(self.true_color[3]),255),0)
 
 class Highlighter(Animator):
     # Changes object color at specified time    
@@ -93,9 +99,9 @@ class Scroller(Animator):
     def start_animation(self,dt):
         # If animation start is sufficiently delayed,
         # manually move vertices to have them "catch up", then start animation
-        if dt - self.start_time > self.LAG_THRESHOLD:
-            for i in range(self.vertex_list_size):
-                self.vertex_list.vertices[2*i] += self.speed * (dt-self.start_time)
+        #if dt - self.start_time > self.LAG_THRESHOLD:
+        for i in range(self.vertex_list_size):
+            self.vertex_list.vertices[2*i] += self.speed * (dt-self.start_time)
         self.midi_clock.schedule(self.animate)
         
         
