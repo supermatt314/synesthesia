@@ -98,7 +98,7 @@ class Scroll_Mode(Base_Style):
             y = (note.pitch - global_min_note)/(global_max_note - global_min_note) \
                 *(track.top_edge-track.bottom_edge) + track.bottom_edge
             current_object.set_position(x, y, relative='left_center')
-            current_object.set_color(track.color)
+            current_object.set_initial_color(track.color)
             animation_data = [{'type':'scroll',
                                'scroll_on_time': note.time_on + offset - track.scroll_on_amount,
                                'scroll_off_time': note.time_off + offset + track.scroll_off_amount,
@@ -150,7 +150,7 @@ class Static_Mode(Base_Style):
             y = (pitch - global_min_note)/(global_max_note - global_min_note) \
                 *(track.top_edge-track.bottom_edge) + track.bottom_edge
             current_object.set_position(x, y, relative='center')
-            current_object.set_color(track.inactive_color)
+            current_object.set_initial_color(track.inactive_color)
             
             animation_data = []
             notes_this_pitch = [note for note in track.note_list if note.pitch == pitch]
@@ -246,11 +246,6 @@ class Fade(Base_Style):
                            'canceling': canceling,
                           },
                          ]
-        if track.fade_end_color != off_color:
-            animation_data.append({'type':'highlight',
-                                   'time': note.time_on + track.offset + fade_length,
-                                   'color': off_color,
-                                   })
         return animation_data
             
 class Pulse(Base_Style):

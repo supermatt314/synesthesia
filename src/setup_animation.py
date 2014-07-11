@@ -108,7 +108,7 @@ def setup_animation(main_window, song):
                }
     background = midi_objects.MIDIVisualObject(batch,bg_group,pyglet.clock.get_default(),bg_data)
     background.set_position(0, song.window_height/2)
-    background.set_color(song.bg_color)
+    background.set_initial_color(song.bg_color)
     
     song.setup_visuals(batch, midi_clock)
 
