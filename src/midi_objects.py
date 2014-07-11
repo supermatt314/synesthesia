@@ -23,51 +23,58 @@ class Animator(object):
         
 class Fader(Animator):
     # Gradually changes color over time
-    def __init__(self,midi_object,start_time,end_time,start_color,end_color,canceling=False):
+    def __init__(self,midi_object):
         Animator.__init__(self,midi_object)
+        self.true_color = list(self.midi_object.initial_color)      
+        
+    def schedule_fade(self,start_time,end_time,start_color,end_color,canceling):
         if end_time == start_time:
-            self.midi_clock.schedule_once(self.highlight, start_time, end_color)
+            self.midi_clock.schedule_once(self.start_highlight, start_time, end_color)
             return
         r_speed = (end_color[0]-start_color[0])/(end_time-start_time)
         g_speed = (end_color[1]-start_color[1])/(end_time-start_time)
         b_speed = (end_color[2]-start_color[2])/(end_time-start_time)
-        a_speed = (end_color[3]-start_color[3])/(end_time-start_time)
-        self.start_time = start_time
-        self.end_time = end_time
-        self.start_color = start_color
-        self.end_color = end_color
-        self.fade_speed = (r_speed, g_speed, b_speed, a_speed)
-        self.true_color = list(self.start_color)
-        self.is_canceling = canceling
-        self.midi_clock.schedule_once(self.start_animation, start_time)
-        self.midi_clock.schedule_once(self.stop_animation, end_time)
+        a_speed = (end_color[3]-start_color[3])/(end_time-start_time)  
+        fade_speed = (r_speed, g_speed, b_speed, a_speed)
+        self.midi_clock.schedule_once(self.start_fade, start_time,
+                                      start_time, end_time, start_color, end_color, fade_speed, canceling)
         
-    def start_animation(self,dt):
-        if self.is_canceling:
+    def schedule_highlight(self,time,color):
+        self.midi_clock.schedule_once(self.start_highlight, time, color)
+        
+    def start_fade(self, dt, start_time, end_time, start_color, end_color, fade_speed, canceling):
+        if canceling:
             self.midi_clock.unschedule(self.fade) # Cancel previous existing fade before starting new one
-            self.midi_clock.unschedule(self.highlight)
-        self.fade(dt-self.start_time) # "De-lag" fade, similar to scroll
-        self.midi_clock.schedule(self.fade)
-        self.midi_clock.schedule_once(self.highlight, self.end_time-self.start_time, self.end_color)# Ensure return to proper color
-    
-    def stop_animation(self,dt):
+            self.midi_clock.unschedule(self.stop_fade)
+        self.true_color = list(start_color)
+        
+        self.midi_clock.schedule_once(self.stop_fade, end_time-dt, end_color) # Ensure return to proper color
+                    
+        self.fade(dt-start_time, fade_speed) # "De-lag" fade, similar to scroll
+        self.midi_clock.schedule(self.fade, fade_speed)
+        
+    def stop_fade(self,dt,end_color):
         self.midi_clock.unschedule(self.fade)
-        #self.highlight(None, self.end_color) 
+        self.highlight(dt, end_color)
+        
+    def start_highlight(self, dt, color):
+        self.highlight(dt, color)
     
-    def highlight(self,dt,new_color):
+    def highlight(self, dt, new_color):
+        self.true_color = list(new_color)
         for i in range(self.vertex_list_size):
             self.vertex_list.colors[4*i]   = int(new_color[0])
             self.vertex_list.colors[4*i+1] = int(new_color[1])
             self.vertex_list.colors[4*i+2] = int(new_color[2])            
             self.vertex_list.colors[4*i+3] = int(new_color[3])        
     
-    def fade(self,dt):
+    def fade(self,dt,fade_speed):
         # Calculate "true" color separately
         # Prevents rounding errors due to necessary int conversion
-        self.true_color[0] += self.fade_speed[0] * dt
-        self.true_color[1] += self.fade_speed[1] * dt
-        self.true_color[2] += self.fade_speed[2] * dt
-        self.true_color[3] += self.fade_speed[3] * dt
+        self.true_color[0] += fade_speed[0] * dt
+        self.true_color[1] += fade_speed[1] * dt
+        self.true_color[2] += fade_speed[2] * dt
+        self.true_color[3] += fade_speed[3] * dt
         #print(self, self.true_color)
         for i in range(self.vertex_list_size): #Ensure colors are not out of bounds (graphics engine does not make this check)
             self.vertex_list.colors[4*i]   = max(min(int(self.true_color[0]),255),0)
@@ -75,6 +82,7 @@ class Fader(Animator):
             self.vertex_list.colors[4*i+2] = max(min(int(self.true_color[2]),255),0)
             self.vertex_list.colors[4*i+3] = max(min(int(self.true_color[3]),255),0)
 
+'''
 class Highlighter(Animator):
     # Changes object color at specified time    
     def __init__(self,midi_object,time,color):
@@ -88,29 +96,30 @@ class Highlighter(Animator):
             self.vertex_list.colors[4*i+1] = new_color[1]
             self.vertex_list.colors[4*i+2] = new_color[2]            
             self.vertex_list.colors[4*i+3] = new_color[3]
-      
+'''
+   
 class Scroller(Animator):
     # Scrolls a vertex list by scroll speed
-    def __init__(self,midi_object,start_time,end_time,speed):
+    def __init__(self,midi_object):
         Animator.__init__(self,midi_object)
-        self.start_time = start_time
-        self.end_time = end_time
-        self.speed = speed        
-        self.midi_clock.schedule_once(self.start_animation, start_time)
-        self.midi_clock.schedule_once(self.stop_animation, end_time+50)
-        
-    def start_animation(self,dt):
+    
+    def schedule_scroll(self,start_time,end_time,speed):
+        self.midi_clock.schedule_once(self.start_animation, start_time,
+                                      start_time, speed)
+        self.midi_clock.schedule_once(self.stop_animation, end_time+50)        
+    
+    def start_animation(self, dt, start_time, speed):
         # If animation start is sufficiently delayed,
         # manually move vertices to have them "catch up", then start animation
         #if dt - self.start_time > self.LAG_THRESHOLD:
         for i in range(self.vertex_list_size):
-            self.vertex_list.vertices[2*i] += self.speed * (dt-self.start_time)
-        self.midi_clock.schedule(self.animate)
+            self.vertex_list.vertices[2*i] += speed * (dt-start_time)
+        self.midi_clock.schedule(self.animate, speed)
         
         
-    def animate(self,dt):
+    def animate(self, dt, speed):
         for i in range(self.vertex_list_size):
-            self.vertex_list.vertices[2*i] += self.speed * dt
+            self.vertex_list.vertices[2*i] += speed * dt
             
     def stop_animation(self,dt):
         self.midi_clock.unschedule(self.animate)
@@ -122,7 +131,6 @@ class MIDIVisualObject(object):
         self.batch = batch
         self.group = group
         self.midi_clock = midi_clock
-        self.animators = []
         self.not_drawn = False
         self.vertex_format = 'v2f'
         self.color_format = 'c4B'
@@ -144,7 +152,10 @@ class MIDIVisualObject(object):
                                                       (self.color_format , self.v_colors) 
                                                      )
         self.x = 0
-        self.y = 0        
+        self.y = 0
+        self.initial_color = (0,0,0,0)
+        self.fader = Fader(self)
+        self.scroller = Scroller(self)
 
     def set_position(self, x, y, relative='center'):
         '''
@@ -180,7 +191,7 @@ class MIDIVisualObject(object):
             self.vertex_list.vertices[2*i]   = x + self.vertices[2*i] + x_adjust
             self.vertex_list.vertices[2*i+1] = y + self.vertices[2*i+1] + y_adjust
     
-    def set_color(self, color_list):
+    def set_initial_color(self, color_list):
         '''
         color_list: 3 (RGB) or 4 (RGBA) length list
         If Alpha is not given, default to max opacity 255
@@ -189,6 +200,7 @@ class MIDIVisualObject(object):
             return
         if len(color_list) == 3:
             color_list = (color_list[0], color_list[1], color_list[2], 255)
+        self.initial_color = color_list
         for i in range(self.vertex_list.get_size()):
             self.vertex_list.colors[4*i]   = color_list[0]
             self.vertex_list.colors[4*i+1] = color_list[1]
@@ -200,25 +212,19 @@ class MIDIVisualObject(object):
             return
         for animation in animation_list:
             if animation['type'] == 'scroll':
-                self.animators.append(Scroller(self,
-                                               animation['scroll_on_time'],
-                                               animation['scroll_off_time'], 
-                                               animation['scroll_speed'],
-                                               )
-                                      )
+                self.scroller.schedule_scroll(animation['scroll_on_time'],
+                                              animation['scroll_off_time'], 
+                                              animation['scroll_speed'],
+                                              )
             elif animation['type'] == 'highlight':
-                self.animators.append(Highlighter(self, animation['time'], animation['color']))
+                self.fader.schedule_highlight(animation['time'], animation['color'])
             elif animation['type'] == 'fade':
-                if 'canceling' not in animation:
-                    animation['canceling'] = False
-                self.animators.append(Fader(self, 
-                                            animation['start_time'], 
-                                            animation['end_time'],
-                                            animation['start_color'],
-                                            animation['end_color'],
-                                            animation['canceling'],
-                                            )
-                                      )
+                self.fader.schedule_fade(animation['start_time'], 
+                                         animation['end_time'],
+                                         animation['start_color'],
+                                         animation['end_color'],
+                                         animation['canceling'],
+                                         )
             else:
                 raise MIDIObjectException('Unknown animation type',animation['type'])
         
