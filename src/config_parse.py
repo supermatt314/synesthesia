@@ -84,11 +84,10 @@ def create_new_config():
         track_data[name] = {'index':t.index,
                             'z_order':t.index,
                             'region':'default',
+                            'mode':'scroll',
                             'style':'simple',
-                            'style_parameters':{
-                                              'color':(255,0,0,255),
-                                              'highlight_color': (255,200,200,255),
-                                              }
+                            'mode_parameters':{},
+                            'style_parameters':{},
                             }
     new_config['track_data'] = track_data
     new_config.write()

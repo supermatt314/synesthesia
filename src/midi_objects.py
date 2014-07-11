@@ -23,7 +23,7 @@ class Animator(object):
         
 class Fader(Animator):
     # Gradually changes color over time
-    def __init__(self,midi_object,start_time,end_time,start_color,end_color,cancelling=False):
+    def __init__(self,midi_object,start_time,end_time,start_color,end_color,canceling=False):
         Animator.__init__(self,midi_object)
         if end_time == start_time:
             self.midi_clock.schedule_once(self.highlight, start_time, end_color)
@@ -33,23 +33,26 @@ class Fader(Animator):
         b_speed = (end_color[2]-start_color[2])/(end_time-start_time)
         a_speed = (end_color[3]-start_color[3])/(end_time-start_time)
         self.start_time = start_time
+        self.end_time = end_time
         self.start_color = start_color
         self.end_color = end_color
         self.fade_speed = (r_speed, g_speed, b_speed, a_speed)
         self.true_color = list(self.start_color)
-        self.is_cancelling = cancelling
+        self.is_canceling = canceling
         self.midi_clock.schedule_once(self.start_animation, start_time)
         self.midi_clock.schedule_once(self.stop_animation, end_time)
         
     def start_animation(self,dt):
-        if self.is_cancelling:
-            self.stop_animation(dt) # Cancel previous existing fade before starting new one
+        if self.is_canceling:
+            self.midi_clock.unschedule(self.fade) # Cancel previous existing fade before starting new one
+            self.midi_clock.unschedule(self.highlight)
         self.fade(dt-self.start_time) # "De-lag" fade, similar to scroll
         self.midi_clock.schedule(self.fade)
+        self.midi_clock.schedule_once(self.highlight, self.end_time-self.start_time, self.end_color)# Ensure return to proper color
     
     def stop_animation(self,dt):
         self.midi_clock.unschedule(self.fade)
-        self.highlight(None, self.end_color) # Ensure return to proper color
+        #self.highlight(None, self.end_color) 
     
     def highlight(self,dt,new_color):
         for i in range(self.vertex_list_size):
@@ -140,8 +143,6 @@ class MIDIVisualObject(object):
                                                       (self.vertex_format, self.vertices),
                                                       (self.color_format , self.v_colors) 
                                                      )
-        self.time_on = None
-        self.time_off = None
         self.x = 0
         self.y = 0        
 
@@ -194,12 +195,6 @@ class MIDIVisualObject(object):
             self.vertex_list.colors[4*i+2] = color_list[2]            
             self.vertex_list.colors[4*i+3] = color_list[3]
             
-    def set_timing(self, time_on, time_off):
-        if self.not_drawn:
-            return        
-        self.time_on = time_on
-        self.time_off = time_off
-            
     def set_animations(self, animation_list):
         if self.not_drawn:
             return
@@ -214,11 +209,14 @@ class MIDIVisualObject(object):
             elif animation['type'] == 'highlight':
                 self.animators.append(Highlighter(self, animation['time'], animation['color']))
             elif animation['type'] == 'fade':
+                if 'canceling' not in animation:
+                    animation['canceling'] = False
                 self.animators.append(Fader(self, 
                                             animation['start_time'], 
                                             animation['end_time'],
                                             animation['start_color'],
                                             animation['end_color'],
+                                            animation['canceling'],
                                             )
                                       )
             else:
@@ -273,13 +271,12 @@ class Song(object):
         
     def set_global_offset(self, delay_amount=None):
         for track in self.track_list:
-            style_type = style.get_style(track.style)
-            if style_type.is_scrolling:
+            if track.mode == 'scroll':
                 track_offset = max((track.scroll_on_amount - track.get_first_note_time()),0)
                 self.global_offset = max(track_offset,self.global_offset)
         if delay_amount:
             tempo = self.get_first_tempo()
-            self.global_offset += delay_amount*96*tempo.tempo/60 #assume tpqn = 96  
+            self.global_offset += delay_amount*self.tpqn*tempo.tempo/60
     
     def set_midi_file(self, midi_file):
         self.midi_file = midi_file
@@ -298,9 +295,7 @@ class Song(object):
         self.batch = batch
         self.midi_clock = midi_clock
         for track in self.track_list:
-            track.group = pyglet.graphics.OrderedGroup(track.z_order)
-            style_type = style.get_style(track.style)
-            style_type.draw_function(track)
+            track.setup_visuals()
             
     def get_region_by_name(self, name):
         for region in self.visual_region_list:
@@ -409,10 +404,26 @@ class Track(object):
         self.parent_region = self.parent_song.get_region_by_name(u['region'])
         self.parent_region.register_track(self)
         self.z_order = u['z_order']
-        self.style = u['style']
-        self.style_parameters = u['style_parameters']
+        self.mode = u['mode']
+        mode_type = style.get_mode(self.mode)
+        self.track_parameters = mode_type.validate(self, u['mode_parameters'])
+        self.style = u['style']        
         style_type = style.get_style(self.style)
-        style_type.validate(self)
+        self.style_parameters = style_type.validate(self, u['style_parameters'])
+        
+        self.bottom_edge = self.parent_region.down * self.parent_song.window_height
+        self.top_edge = self.parent_region.up   * self.parent_song.window_height
+        self.left_edge = self.parent_region.left * self.parent_song.window_width
+        self.right_edge = self.parent_region.right * self.parent_song.window_width
+        if self.mode == 'scroll':
+            self.scroll_on_amount  = self.parent_song.window_width/self.speed * (1-self.hit_line_percent)
+            self.scroll_off_amount = self.parent_song.window_width/self.speed * (self.hit_line_percent)
+            
+    def setup_visuals(self):
+        self.group = pyglet.graphics.OrderedGroup(self.z_order)
+        mode_type = style.get_mode(self.mode)
+        style_type = style.get_style(self.style)
+        mode_type.draw_with_style(self, style_type)
         
     def get_first_note_time(self):
         if self.note_list:
