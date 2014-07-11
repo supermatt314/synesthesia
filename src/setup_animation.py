@@ -72,7 +72,10 @@ def get_data(main_window):
         mp3_delay_amount = abs(song.mp3_delay)
     else:
         mp3_delay_amount = None
+        
     song.set_global_offset(delay_amount=mp3_delay_amount)
+    for track in song.track_list:
+        track.offset = song.global_offset
     
     song.optimize_z_order()
     print('Done getting data')
