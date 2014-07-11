@@ -415,8 +415,12 @@ class Track(object):
         style_type.validate(self)
         
     def get_first_note_time(self):
-        min_note = min(self.note_list,key=lambda note: note.time_on)
-        return min_note.time_on
+        if self.note_list:
+            min_note = min(self.note_list,key=lambda note: note.time_on)
+            time = min_note.time_on
+        else:
+            time = float("inf")
+        return time
 
 class Note(object):
     '''
