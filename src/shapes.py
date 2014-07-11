@@ -35,7 +35,7 @@ def rectangle(midi_obj, h, w):
 def ellipse(midi_obj, h, w):
     b = h/2
     a = w/2
-    n = 30 # number of outer points
+    n = 40 # number of outer points
     midi_obj.v_count = n+1
     midi_obj.v_colors = [255,0,0,255]*midi_obj.v_count        
     midi_obj.vertices = [0,0]
@@ -62,7 +62,7 @@ def diamond(midi_obj, h, w):
 def star(midi_obj, h, w):
     b = h/2
     a = w/2
-    n = 30 # number of outer points
+    n = 40 # number of outer points
     midi_obj.v_count = n+1
     midi_obj.v_colors = [255,0,0,255]*midi_obj.v_count        
     midi_obj.vertices = [0,0]
