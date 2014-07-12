@@ -236,6 +236,7 @@ class Fade(Base_Style):
                                               min(track.max_fade_time,
                                                   note.time_off-note.time_on)
                                               )
+        canceling = False
         if 'canceling' in kwargs:
             canceling = kwargs['canceling']
         animation_data = [{'type':'fade',
@@ -270,9 +271,9 @@ class Pulse(Base_Style):
                                   'pulse_end_color',                                  
                                   'pulse_time',
                                   )
-        self.default_params = {'inactive_color':(255,0,0,255),
+        self.default_params = {'inactive_color':(255,0,0,0),
                                'color':(255,0,0,255),
-                               'pulse_peak_color':(255,0,0,255),
+                               'pulse_peak_color':(255,255,255,255),
                                'pulse_end_color':None,
                                'pulse_time':48,
                                }   
@@ -282,17 +283,23 @@ class Pulse(Base_Style):
         pulse_length = min(track.pulse_time,
                           note.time_off-note.time_on
                           )
+        canceling = False
+        if 'canceling' in kwargs:
+            canceling = kwargs['canceling']        
         animation_data = [{'type':'fade',
                            'start_time': note.time_on + track.offset,
                            'end_time': note.time_on + track.offset + pulse_length/2,
                            'start_color': off_color,
                            'end_color': track.pulse_peak_color,
+                           'canceling': canceling                
                            },
                           {'type':'fade',
-                           'start_time': note.time_on + track.offset + pulse_length/2,
+                           # add 1 tick so previous fade doesnt prematurely cancel this one
+                           'start_time': note.time_on + track.offset + pulse_length/2 + 1,
                            'end_time': note.time_on + track.offset + pulse_length,
                            'start_color': track.pulse_peak_color,
                            'end_color': end_color,
+                           'canceling': False
                            },                              
                           {'type':'highlight',
                            'time': note.time_off + track.offset,
